@@ -51,8 +51,8 @@ print("Starting file management setup...")
 
 # Define paths to the database folders (images and labels)
 
-nnunet_dir = "/home/perecanals/nnunet_env/nnUNet/nnunet"
 # nnunet_dir = "/Users/pere/opt/anaconda3/envs/nnunet_env/nnUNet/nnunet"
+nnunet_dir = "/home/perecanals/nnunet_env/nnUNet/nnunet"
 
 path_images_base = join(nnunet_dir, "nnUNet_base/nnUNet_raw/Task00_grid/database_images")
 path_labels_base = join(nnunet_dir, "nnUNet_base/nnUNet_raw/Task00_grid/database_labels")
@@ -258,7 +258,7 @@ for i in range(1): # 3-fold cross validation
 
     # Move json file to nnUNet_raw dir
 
-    os.rename(nnunet_dir + "/nnunet_vh2020/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw/Task00_grid/dataset.json")
+    os.rename(nnunet_dir + "/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw/Task00_grid/dataset.json")
 
     print("         check!")
     print(" ")

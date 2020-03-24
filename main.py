@@ -51,8 +51,8 @@ print("Starting file management setup...")
 
 # Define paths to the database folders (images and labels)
 
-# nnunet_dir = "/home/perecanals/nnunet_env/nnUNet/nnunet"
 nnunet_dir = "/Users/pere/opt/anaconda3/envs/nnunet_env/nnUNet/nnunet"
+# nnunet_dir = "/home/perecanals/nnunet_env/nnUNet/nnunet"
 
 path_images_base = join(nnunet_dir, "nnUNet_base/nnUNet_raw/Task00_grid/database_images")
 path_labels_base = join(nnunet_dir, "nnUNet_base/nnUNet_raw/Task00_grid/database_labels")

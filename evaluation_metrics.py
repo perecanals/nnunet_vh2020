@@ -14,9 +14,13 @@ import time
 
 def eval_metrics():
 
-    start = time.time()
-    path_label = "/Users/pere/opt/anaconda3/envs/nnunet_env/nnUNet/nnunet/inference_test/labels"
-    path_out = "/Users/pere/opt/anaconda3/envs/nnunet_env/nnUNet/nnunet/inference_test/output"
+    # nnunet_dir = "/Users/pere/opt/anaconda3/envs/nnunet_env/nnUNet/nnunet"
+    nnunet_dir = "/home/perecanals/nnunet_env/nnUNet/nnunet"
+
+    # start = time.time()
+
+    path_label = join(nnunet_dir, "inference_test/labels")
+    path_out = join(nnunet_dir, "inference_test/output")
 
     dir_label = os.fsencode(path_label)
     dir_out = os.fsencode(path_out)
@@ -47,7 +51,7 @@ def eval_metrics():
 
     accuracy = []; sensitivity = []; specificity = []; dice_score = []
 
-    print("time 1", time.time()-start, "s")
+    # print("time 1", time.time()-start, "s")
 
     for i in range(len(list_label)):
 
@@ -94,7 +98,7 @@ def eval_metrics():
         print('specificity =', specificity)
         print('dice score =', dice_score)
 
-        print("time 2", time.time()-start_loop, "s")
+        # print("time 2", time.time()-start_loop, "s")
 
     acc_mean = np.mean(accuracy)
     acc_std = np.std(accuracy)
@@ -113,7 +117,7 @@ def eval_metrics():
     # print('specificity =', spe_mean, spe_std)
     # print('dice score =', dice_mean, dice_std)
 
-    print("time 3", time.time()-start, "s")
+    # print("time 3", time.time()-start, "s")
 
     eval_met = [acc_mean, acc_std, sen_mean, sen_std, spe_mean, spe_std, dice_mean, dice_std]
 

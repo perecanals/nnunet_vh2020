@@ -41,8 +41,13 @@ import json
 
 from evaluation_metrics import eval_metrics
 
+print("Model optimization for nnunet (Isensee et al. 2019) for segmentation of 3D CTA images")
+print("By Pere Canals")
+print(" ")
 
 ####################### File management #######################
+
+print("Starting file management setup...")
 
 # Define paths to the database folders (images and labels)
 
@@ -129,7 +134,14 @@ np.random.shuffle(order)
 list_images_base_fold = [list_images_base[i] for i in order]
 list_labels_base_fold = [list_labels_base[i] for i in order]
 
-for i in range(1) # 3-fold cross validation
+print("check!")
+print(" ")
+print("Starting 3-fold cross validation")
+
+for i in range(1): # 3-fold cross validation
+
+    print("     Fold", str(i))
+    print("         File management...")
 
     # Remove all files from previous fold
 
@@ -246,25 +258,43 @@ for i in range(1) # 3-fold cross validation
 
     # Move json file to nnUNet_raw dir
 
-    os.rename(nnunet_dir + "/TFM/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw/Task00_grid/dataset.json")<<
+    os.rename(nnunet_dir + "/nnunet_vh2020/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw/Task00_grid/dataset.json")
+
+    print("         check!")
+    print(" ")
 
     # With the json file ready, we shall begin preprocessing first:
 
     ############### Plan and preprocessing ############
 
+    print("         Preprocessing...")
+
     os.system("python3 experiment_planning/plan_and_preprocess_task.py -t Task00_grid -pl 4 -pf 4")
+
+    print("         check!")
 
     ##################### Training ####################
 
+    print("         Training...")
+
     os.system("python3 run/run_training.py 3d_fullres nnUNetTrainer Task00_grid all --ndet")
+
+    print("         check!")
 
     ##################### Inference ###################
 
+    print("         Inference...")
+
     os.system("python3 inference/predict_simple.py -i " + path_imagesTest + " -o " + path_outputsTest + " -t Task00_grid -tr nnUNetTrainer -m 3d_fullres -f all")
     
+    print("         check!")
+    print(" ")
+
     # Perform testing over inferred samples
 
-    eval_met = evaluation_metrics()
+    print("         Evaluation metrics...")
+
+    eval_met = eval_metrics()
     acc_mean, acc_std, sen_mean, sen_std, spe_mean, spe_std, dice_mean, dice_std = eval_met
 
     # Create new file for the fold
@@ -287,5 +317,9 @@ for i in range(1) # 3-fold cross validation
     print('specificity =', spe_mean, spe_std)
     print('dice score =', dice_mean, dice_std)
 
-    
+    print("         check!")
+    print(" ")
 
+    print("     End of fold", str(i))
+
+    print("###################################")

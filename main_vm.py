@@ -51,8 +51,8 @@ print("Starting file management setup...")
 
 # Define paths to the database folders (images and labels)
 
-# nnunet_dir = "/home/perecanals/nnunet_env/nnUNet/nnunet"
-nnunet_dir = "/Users/pere/opt/anaconda3/envs/nnunet_env/nnUNet/nnunet"
+nnunet_dir = "/home/perecanals/nnunet_env/nnUNet/nnunet"
+# nnunet_dir = "/Users/pere/opt/anaconda3/envs/nnunet_env/nnUNet/nnunet"
 
 path_images_base = join(nnunet_dir, "nnUNet_base/nnUNet_raw/Task00_grid/database_images")
 path_labels_base = join(nnunet_dir, "nnUNet_base/nnUNet_raw/Task00_grid/database_labels")
@@ -269,7 +269,7 @@ for i in range(1): # 3-fold cross validation
 
     print("         Preprocessing...")
 
-    os.system("python3 experiment_planning/plan_and_preprocess_task.py -t Task00_grid -pl 4 -pf 4")
+    os.system("OMP_NUM_THREADS=1 python3 experiment_planning/plan_and_preprocess_task.py -t Task00_grid -pl 4 -pf 4")
 
     print("         check!")
 
@@ -277,7 +277,7 @@ for i in range(1): # 3-fold cross validation
 
     print("         Training...")
 
-    os.system("python3 run/run_training.py 3d_fullres nnUNetTrainer Task00_grid all --ndet")
+    os.system("OMP_NUM_THREADS=1 python3 run/run_training.py 3d_fullres nnUNetTrainer Task00_grid all --ndet")
 
     print("         check!")
 
@@ -285,7 +285,7 @@ for i in range(1): # 3-fold cross validation
 
     print("         Inference...")
 
-    os.system("python3 inference/predict_simple.py -i " + path_imagesTest + " -o " + path_outputsTest + " -t Task00_grid -tr nnUNetTrainer -m 3d_fullres -f all")
+    os.system("OMP_NUM_THREADS=1 python3 inference/predict_simple.py -i " + path_imagesTest + " -o " + path_outputsTest + " -t Task00_grid -tr nnUNetTrainer -m 3d_fullres -f all")
     
     print("         check!")
     print(" ")

@@ -41,6 +41,7 @@ import json
 
 from evaluation_metrics import eval_metrics
 
+print(" ")
 print("Model optimization for nnunet (Isensee et al. 2019) for segmentation of 3D CTA images")
 print("By Pere Canals")
 print(" ")
@@ -258,7 +259,7 @@ for i in range(1): # 3-fold cross validation
 
     # Move json file to nnUNet_raw dir
 
-    os.rename(nnunet_dir + "/nnunet_vh2020/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw/Task00_grid/dataset.json")
+    os.rename(nnunet_dir + "/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw/Task00_grid/dataset.json")
 
     print("         check!")
     print(" ")
@@ -269,7 +270,7 @@ for i in range(1): # 3-fold cross validation
 
     print("         Preprocessing...")
 
-    os.system("OMP_NUM_THREADS=1 python3 experiment_planning/plan_and_preprocess_task.py -t Task00_grid -pl 4 -pf 4")
+    os.system("python3 experiment_planning/plan_and_preprocess_task.py -t Task00_grid -pl 4 -pf 4")
 
     print("         check!")
 

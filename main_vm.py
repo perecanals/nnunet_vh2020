@@ -41,8 +41,9 @@ import json
 
 from evaluation_metrics import eval_metrics
 
+print(" ")
 print("Model optimization for nnunet (Isensee et al. 2019) for segmentation of 3D CTA images")
-print("By Pere Canals")
+print("By Pere Canals (2020)")
 print(" ")
 
 ####################### File management #######################
@@ -69,8 +70,9 @@ path_imagesTr_rm = path_imagesTr + "/*"
 path_labelsTr_rm = path_labelsTr + "/*"
 path_imagesTs_rm = path_imagesTs + "/*"
 
-path_imagesTest_rm = path_imagesTest + "/*"
+path_imagesTest_rm = path_imagesTest + "/*.gz"
 path_labelsTest_rm = path_labelsTest + "/*"
+path_outputsTest_rm = path_outputsTest + "/*"
 
 imagesTr = "./imagesTr/"
 labelsTr = "./labelsTr/"
@@ -78,6 +80,8 @@ imagesTs = "./imagesTs/"
 
 path_model = join(nnunet_dir, "nnUNet_base/nnUNet_training_output_dir/3d_fullres/Task00_grid/nnUNetTrainer__nnUNetPlans/all")
 path_save_model = join(nnunet_dir, "models")
+
+path_inference = path_imagesTest + "/inf"
 
 # Create new directory for the model
 
@@ -115,9 +119,9 @@ list_labels_base.sort()
 
 # We attribute some percentages of the database to training, validation and testing
 
-tr_prop   = 0.70
-val_prop  = 0.00 # Training set includes cross validation (80:20)
-test_prop = 0.30
+tr_prop   = 0.80
+val_prop  = 0.00 # Training set includes validation (80:20)
+test_prop = 0.20
 
 samp_tr   = int(np.round(tr_prop   * len(list_images_base)))
 samp_val  = int(np.round(val_prop  * len(list_images_base)))
@@ -145,25 +149,23 @@ for i in range(1): # 3-fold cross validation
 
     # Remove all files from previous fold
 
-    files = glob.glob(path_imagesTr_rm)
-    for f in files:
-        os.remove(f)
+    # files = glob.glob(path_imagesTr_rm)
+    # for f in files: os.remove(f)
 
-    files = glob.glob(path_labelsTr_rm)
-    for f in files:
-        os.remove(f)
+    # files = glob.glob(path_labelsTr_rm)
+    # for f in files: os.remove(f)
 
-    files = glob.glob(path_imagesTs_rm)
-    for f in files:
-        os.remove(f)
+    # files = glob.glob(path_imagesTs_rm)
+    # for f in files: os.remove(f)
 
     files = glob.glob(path_imagesTest_rm)
-    for f in files:
-        os.remove(f)
+    for f in files: os.remove(f)
 
     files = glob.glob(path_labelsTest_rm)
-    for f in files:
-        os.remove(f)
+    for f in files: os.remove(f)
+
+    files = glob.glob(path_outputsTest_rm)
+    for f in files: os.remove(f)
 
     # We generate an order vector to shuffle the samples before each fold for the cross validation
 
@@ -182,14 +184,14 @@ for i in range(1): # 3-fold cross validation
 
     # Copy all corresponding files of present fold
 
-    for ii in range(len(list_imagesTr)):
-        shutil.copyfile(path_images_base + "/" + list_imagesTr[ii],   path_imagesTr   + "/" + list_imagesTr[ii])
+    # for ii in range(len(list_imagesTr)):
+    #     shutil.copyfile(path_images_base + "/" + list_imagesTr[ii],   path_imagesTr   + "/" + list_imagesTr[ii])
 
-    for ii in range(len(list_labelsTr)):
-        shutil.copyfile(path_labels_base + "/" + list_labelsTr[ii],   path_labelsTr   + "/" + list_labelsTr[ii])
+    # for ii in range(len(list_labelsTr)):
+    #     shutil.copyfile(path_labels_base + "/" + list_labelsTr[ii],   path_labelsTr   + "/" + list_labelsTr[ii])
 
-    for ii in range(len(list_imagesTs)):
-        shutil.copyfile(path_images_base + "/" + list_imagesTs[ii],   path_imagesTs   + "/" + list_imagesTs[ii])
+    # for ii in range(len(list_imagesTs)):
+    #     shutil.copyfile(path_images_base + "/" + list_imagesTs[ii],   path_imagesTs   + "/" + list_imagesTs[ii])
 
     for ii in range(len(list_imagesTest)):
         shutil.copyfile(path_images_base + "/" + list_imagesTest[ii], path_imagesTest + "/" + list_imagesTest[ii])
@@ -259,19 +261,22 @@ for i in range(1): # 3-fold cross validation
     # Move json file to nnUNet_raw dir
 
     os.rename(nnunet_dir + "/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw/Task00_grid/dataset.json")
+    shutil.copyfile(nnunet_dir + "/nnUNet_base/nnUNet_raw/Task00_grid/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_preprocessed/Task00_grid/dataset.json")
+    shutil.copyfile(nnunet_dir + "/nnUNet_base/nnUNet_raw/Task00_grid/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw_cropped/Task00_grid/dataset.json")
+    shutil.copyfile(nnunet_dir + "/nnUNet_base/nnUNet_raw/Task00_grid/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw_splitted/Task00_grid/dataset.json")
 
     print("         check!")
     print(" ")
 
     # With the json file ready, we shall begin preprocessing first:
 
-    ############### Plan and preprocessing ############
+    ############### Plan and preprocessing ############      Preprocessing done in a separate server with very powerful CPU
 
-    print("         Preprocessing...")
+    # print("         Preprocessing...")
 
-    os.system("OMP_NUM_THREADS=1 python3 experiment_planning/plan_and_preprocess_task.py -t Task00_grid -pl 4 -pf 4")
+    # os.system("python3 experiment_planning/plan_and_preprocess_task.py -t Task00_grid -pl 4 -pf 4")
 
-    print("         check!")
+    # print("         check!")
 
     ##################### Training ####################
 
@@ -281,11 +286,21 @@ for i in range(1): # 3-fold cross validation
 
     print("         check!")
 
-    ##################### Inference ###################
+    ##################### Inference ################### Perform inference one image at the time? Memory problems
 
     print("         Inference...")
 
-    os.system("OMP_NUM_THREADS=1 python3 inference/predict_simple.py -i " + path_imagesTest + " -o " + path_outputsTest + " -t Task00_grid -tr nnUNetTrainer -m 3d_fullres -f all")
+    #os.remove(path_model + "/model_best.model")
+    #shutil.move(nnunet_dir + "/models/model_1_default_model/model_best.model", path_model + "/") # remove this
+
+    maybe_mkdir_p(path_inference)
+
+    for image in list_imagesTest:
+        shutil.move(path_imagesTest + "/" + image, path_inference + "/" + image)
+
+        os.system("OMP_NUM_THREADS=1 python3 inference/predict_simple.py -i " + path_inference + " -o " + path_outputsTest + " -t Task00_grid -tr nnUNetTrainer -m 3d_fullres -f all")
+
+        shutil.move(path_inference + "/" + image, path_imagesTest + "/" + image)
     
     print("         check!")
     print(" ")
@@ -302,6 +317,14 @@ for i in range(1): # 3-fold cross validation
     fold_dir = join(model_dir, "fold" + str(i))
     maybe_mkdir_p(fold_dir)
 
+    # Move outputs to fold
+
+    shutil.move(path_outputsTest, fold_dir)
+
+    # Move dataset.json to fold
+
+    shutil.move(nnunet_dir + "/nnUNet_base/nnUNet_raw/Task00_grid/dataset.json", fold_dir)
+
     # Save model file and files for each fold and model
 
     for file in os.listdir(path_model):
@@ -312,10 +335,10 @@ for i in range(1): # 3-fold cross validation
     np.savetxt(eval_file, eval_met)
 
     print("Fold", str(i), "for model", model_name, "complete. Evaluation metrics:")
-    print('accuracy =', acc_mean, acc_std)
-    print('sensitivity =', sen_mean, sen_std)
-    print('specificity =', spe_mean, spe_std)
-    print('dice score =', dice_mean, dice_std)
+    print("accuracy =", acc_mean, acc_std)
+    print("sensitivity =", sen_mean, sen_std)
+    print("specificity =", spe_mean, spe_std)
+    print("dice score =", dice_mean, dice_std)
 
     print("         check!")
     print(" ")

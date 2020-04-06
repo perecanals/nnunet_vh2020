@@ -6,6 +6,7 @@ import torchvision.transforms as transforms
 import os
 import nibabel as nib
 from nibabel.testing import data_path
+from batchgenerators.utilities.file_and_folder_operations import maybe_mkdir_p, join
 
 import sklearn
 from sklearn.metrics import confusion_matrix
@@ -20,7 +21,7 @@ def eval_metrics():
     # start = time.time()
 
     path_label = join(nnunet_dir, "inference_test/labels")
-    path_out = join(nnunet_dir, "inference_test/output")
+    path_out = join(nnunet_dir, "inference_test/outputs")
 
     dir_label = os.fsencode(path_label)
     dir_out = os.fsencode(path_out)
@@ -55,7 +56,7 @@ def eval_metrics():
 
     for i in range(len(list_label)):
 
-        start_loop = time.time()
+        # start_loop = time.time()
 
         path_file_label = os.path.join(path_label, list_label[i])
         img_label = nib.load(path_file_label)
@@ -63,25 +64,24 @@ def eval_metrics():
         img_out = nib.load(path_file_out)
 
         img_label_data = img_label.get_data()
-        t_label = torch.tensor(img_label_data)
+        label = np.array(img_label_data)
         img_out_data = img_out.get_data()
-        t_out = torch.tensor(img_out_data)
+        pred = np.array(img_out_data)
 
-        # y_label = t_label.numpy()
-        # y_out = t_out.numpy()
+        label_back = np.ones(label.shape) - label
+        pred_back = np.ones(pred.shape) - pred
 
-        # dice = np.sum(y_out[y_label==1]==1)*2.0 / (np.sum(y_out==1) + np.sum(y_label==1))
+        # CM = confusion_matrix(t_label.view(-1), t_out.view(-1)) # Too slow!!!!!
 
-        # dice_score.append(dice)
+        # tn = CM[0,0] 
+        # fp = CM[0,1]
+        # fn = CM[1,0]
+        # tp = CM[1,1]
 
-        # continue
-
-        CM = confusion_matrix(t_label.view(-1), t_out.view(-1)) # Too slow!!!!!
-
-        tn = CM[0,0] 
-        fp = CM[0,1]
-        fn = CM[1,0]
-        tp = CM[1,1]
+        tn = np.sum(pred_back[label_back==1]==1)
+        tp = np.sum(pred[label==1]==1)
+        fn = np.sum(pred_back[label_back==0]==1)
+        fp = np.sum(pred[label==0]==1)
 
         acc = (tn + tp) / (tn + tp + fn + fp)
         sen = tp / (tp + fn)

@@ -182,7 +182,7 @@ def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None):
     print('Copying new files...')
 
     for image in list_imagesTr:
-        shutil.copyfile(join(path_images_base, image), join(path_imagesTr, image))
+        shutil.copyfile(join(path_images_base, image), join(path_imagesTr, image[:8] + '_0000.nii.gz'))
     for label in list_labelsTr:
         shutil.copyfile(join(path_labels_base, label), join(path_labelsTr, label))
     for image in list_imagesTs:
@@ -250,10 +250,9 @@ def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None):
 
     # Move json file to nnUNet_base dirs
     print('Moving .json to nnUNet_base directories...')
-    os.rename(nnunet_dir + "/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw/Task00_grid/dataset.json")
-    shutil.copyfile(nnunet_dir + "/nnUNet_base/nnUNet_raw/Task100_grid/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_preprocessed/Task100_grid/dataset.json")
-    shutil.copyfile(nnunet_dir + "/nnUNet_base/nnUNet_raw/Task100_grid/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw_cropped/Task100_grid/dataset.json")
-    shutil.copyfile(nnunet_dir + "/nnUNet_base/nnUNet_raw/Task100_grid/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw_splitted/Task100_grid/dataset.json")
+    os.rename(nnunet_dir + "/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw_data/Task00_grid/dataset.json")
+    shutil.copyfile(nnunet_dir + "/nnUNet_base/nnUNet_raw_data/Task100_grid/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_preprocessed/Task100_grid/dataset.json")
+    shutil.copyfile(nnunet_dir + "/nnUNet_base/nnUNet_raw_data/Task100_grid/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw_cropped/Task100_grid/dataset.json")
 
     print('done')
     print('    ')

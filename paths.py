@@ -33,7 +33,7 @@ PLEASE READ paths.md FOR INFORMATION TO HOW TO SET THIS UP
 
 # base = join(os.path.abspath(''), 'nnUNet_base')
 base = '/Users/pere/opt/anaconda3/envs/thesis/nnUNet/nnunet/nnUNet_base'
-# base = '/home/pere/nnunet_env/nnUNet/nnunet/nnUNet_base'
+# base = '/home/perecanals/nnunet_env/nnUNet/nnunet/nnUNet_base'
 preprocessing_output_dir = join(base, 'nnUNet_preprocessed')
 network_training_output_dir_base = join(base, 'nnUNet_training_output_dir')
 

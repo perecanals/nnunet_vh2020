@@ -27,14 +27,14 @@ PLEASE READ paths.md FOR INFORMATION TO HOW TO SET THIS UP
 """
 
 # Original (Could set environmental variables)
-# base = os.environ['nnUNet_raw_data_base'] if "nnUNet_raw_data_base" in os.environ.keys() else None
-# preprocessing_output_dir = os.environ['nnUNet_preprocessed'] if "nnUNet_preprocessed" in os.environ.keys() else None
-# network_training_output_dir_base = os.path.join(os.environ['RESULTS_FOLDER']) if "RESULTS_FOLDER" in os.environ.keys() else None
+base = os.environ['nnUNet_raw_data_base'] if "nnUNet_raw_data_base" in os.environ.keys() else None
+preprocessing_output_dir = os.environ['nnUNet_preprocessed'] if "nnUNet_preprocessed" in os.environ.keys() else None
+network_training_output_dir_base = os.path.join(os.environ['RESULTS_FOLDER']) if "RESULTS_FOLDER" in os.environ.keys() else None
 
 # base = '/Users/pere/opt/anaconda3/envs/thesis/nnUNet/nnunet/nnUNet_base'
-base = '/home/perecanals/nnunet_env/nnUNet/nnunet/nnUNet_base'
-preprocessing_output_dir = join(base, 'nnUNet_preprocessed')
-network_training_output_dir_base = join(base, 'nnUNet_training_output_dir')
+# base = '/home/perecanals/nnunet_env/nnUNet/nnunet/nnUNet_base'
+# preprocessing_output_dir = join(base, 'nnUNet_preprocessed')
+# network_training_output_dir_base = join(base, 'nnUNet_training_output_dir')
 
 if base is not None:
     nnUNet_raw_data = join(base, "nnUNet_raw")

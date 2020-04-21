@@ -25,9 +25,9 @@ def preprocessing(nnunet_dir):
     path_images_base = join(nnunet_dir, 'database_vh/database_images')
     path_labels_base = join(nnunet_dir, 'database_vh/database_labels')
 
-    path_imagesTr = join(nnunet_dir, 'nnUNet_base/nnUNet_raw/Task100_grid/imagesTr')
-    path_labelsTr = join(nnunet_dir, 'nnUNet_base/nnUNet_raw/Task100_grid/labelsTr')
-    path_imagesTs = join(nnunet_dir, 'nnUNet_base/nnUNet_raw/Task100_grid/imagesTs')
+    path_imagesTr = join(nnunet_dir, 'nnUNet_base/nnUNet_raw_data/Task100_grid/imagesTr')
+    path_labelsTr = join(nnunet_dir, 'nnUNet_base/nnUNet_raw_data/Task100_grid/labelsTr')
+    path_imagesTs = join(nnunet_dir, 'nnUNet_base/nnUNet_raw_data/Task100_grid/imagesTs')
 
     imagesTr = './imagesTr/'
     labelsTr = './labelsTr/'
@@ -71,7 +71,7 @@ def preprocessing(nnunet_dir):
     print('Copying new files...')
 
     for image in list_images_base:
-        shutil.copyfile(join(path_images_base, image),   join(path_imagesTr, image))
+        shutil.copyfile(join(path_images_base, image),   join(path_imagesTr, image[:8] + '_0000.nii.gz'))
     for label in list_labels_base:
         shutil.copyfile(join(path_labels_base, label),   join(path_labelsTr, label))
 
@@ -136,7 +136,7 @@ def preprocessing(nnunet_dir):
     # Move json file to Task00_grid
     print('Moving .json to Task100_grid directory...')
 
-    os.rename(nnunet_dir + "/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw/Task100_grid/dataset.json")
+    os.rename(nnunet_dir + "/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw_data/Task100_grid/dataset.json")
 
     print('done')
     print('    ')

@@ -25,18 +25,15 @@ parser.add_argument('-s', '--seed', type=int, help='random seed for the dataset 
                                                    'required.', required=False)
 
 parser.add_argument('-ds', '--dataset_size', typ=int, help='use in case you want to limit the number '
-                                                           'of training images to a certain number', 
-                                                           required=False)
+                                                           'of training images to a certain number', required=False)
 
 parser.add_argument('-f', '--folds', type=int, help='number of folds for the cross validation. '
                                                     'If we do not input FOLDS in TRAINING mode, '
-                                                    'we will train with the whole training set.', 
-                                                    required=False)
+                                                    'we will train with the whole training set.', required=False)
 
 parser.add_argument('-sk', '--skip_fold', type=int, help='it skips folds below number specified. '
                                                          'E.g. if --skip_fold is set to ::1::, it will '
-                                                         'skip the first fold (fold 0). Not required.', 
-                                                         required=False)
+                                                         'skip the first fold (fold 0). Not required.', required=False)
 
 parser.add_argument('-md', '--model_dir', type=str, help='path to the directory containing the model '
                                                          'that we want to use for TESTING. required for '

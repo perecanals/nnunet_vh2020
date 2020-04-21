@@ -9,7 +9,7 @@ from time import time
 
 from batchgenerators.utilities.file_and_folder_operations import maybe_mkdir_p, join
 
-def training(nnunet_dir, FOLDS=1, SKIP_FOLD=None):
+def training(nnunet_dir, FOLDS=1, SKIP_FOLD=0):
     ''' ############################### Training #############################################
 
     Training of the nnunet (3-fold cross validation).

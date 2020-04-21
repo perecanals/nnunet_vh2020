@@ -24,8 +24,8 @@ parser.add_argument('-m', '--mode', type=str, help='choose from the following op
 parser.add_argument('-s', '--seed', type=int, help='random seed for the dataset ordering. Not '
                                                    'required.', required=False)
 
-parser.add_argument('-ds', '--dataset_size', typ=int, help='use in case you want to limit the number '
-                                                           'of training images to a certain number')
+#parser.add_argument('-ds', '--dataset_size', typ=int, help='use in case you want to limit the number '
+#                                                           'of training images to a certain number', required=False)
 
 parser.add_argument('-f', '--folds', type=int, help='number of folds for the cross validation. '
                                                     'If we do not input FOLDS in TRAINING mode, '

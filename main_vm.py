@@ -41,6 +41,8 @@ import json
 
 from evaluation_metrics import eval_metrics
 
+from time import time
+
 print(" ")
 print("Model optimization for nnunet (Isensee et al. 2019) for segmentation of 3D CTA images")
 print("By Pere Canals (2020)")
@@ -62,7 +64,7 @@ path_imagesTr = join(nnunet_dir, "nnUNet_base/nnUNet_raw/Task00_grid/imagesTr")
 path_labelsTr = join(nnunet_dir, "nnUNet_base/nnUNet_raw/Task00_grid/labelsTr")
 path_imagesTs = join(nnunet_dir, "nnUNet_base/nnUNet_raw/Task00_grid/imagesTs")
 
-path_imagesTest = join(nnunet_dir, "inference_test/input")
+path_imagesTest = join(nnunet_dir, "inference_test/inputs")
 path_labelsTest = join(nnunet_dir, "inference_test/labels")
 path_outputsTest = join(nnunet_dir, "inference_test/outputs")
 
@@ -81,7 +83,7 @@ imagesTs = "./imagesTs/"
 path_model = join(nnunet_dir, "nnUNet_base/nnUNet_training_output_dir/3d_fullres/Task00_grid/nnUNetTrainer__nnUNetPlans/all")
 path_save_model = join(nnunet_dir, "models")
 
-path_inference = path_imagesTest + "/inf"
+path_inference = path_imagesTest + "/inf" # Auxiliar for "low" RAM
 
 # Create new directory for the model
 
@@ -166,8 +168,6 @@ for i in range(1): # 3-fold cross validation
 
     files = glob.glob(path_outputsTest_rm)
     for f in files: os.remove(f)
-
-    # We generate an order vector to shuffle the samples before each fold for the cross validation
 
     list_imagesTr   = list_images_base_fold[0: samp_tr]
     list_labelsTr   = list_labels_base_fold[0: samp_tr]
@@ -298,7 +298,11 @@ for i in range(1): # 3-fold cross validation
     for image in list_imagesTest:
         shutil.move(path_imagesTest + "/" + image, path_inference + "/" + image)
 
+        # start = time.time()
+
         os.system("OMP_NUM_THREADS=1 python3 inference/predict_simple.py -i " + path_inference + " -o " + path_outputsTest + " -t Task00_grid -tr nnUNetTrainer -m 3d_fullres -f all")
+
+        # print("Testing took:", time.time() - start, "s")
 
         shutil.move(path_inference + "/" + image, path_imagesTest + "/" + image)
     

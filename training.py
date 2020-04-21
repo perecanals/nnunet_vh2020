@@ -52,7 +52,7 @@ def training(nnunet_dir, FOLDS=1, SKIP_FOLD=0):
 
             start = time()
 
-            os.system(f'OMP_NUM_THREADS=1 python3 run/run_training.py 3d_fullres nnUNetTrainer Task100_grid {str(fold)} --ndet')
+            os.system(f'nnUNet_train 3d_fullres nnUNetTrainerV2 Task100_grid {str(fold)}')
 
             print('                                 ')
             print('End of training: fold',       fold)

@@ -103,7 +103,7 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None):
         if LOW_RAM is not None:
             print('Performing inference with the whole testing set:')
             print('                                                ')
-            os.system("OMP_NUM_THREADS=1 python3 inference/predict_simple.py -i " + path_imagesTest + " -o " + path_outputTest + " -t Task100_grid -tr nnUNetTrainer -m 3d_fullres -f all")
+            os.system('nnUNet_predict -i ' + path_imagesTest + ' -o ' + path_outputTest + ' -t Task100_grid -m 3d_fullres -f all --save_npz')
 
             print('                  ')
             print('Inference finished')
@@ -117,7 +117,7 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None):
 
                 print('Performing inference over', image)
                 print('                                ')
-                os.system("OMP_NUM_THREADS=1 python3 inference/predict_simple.py -i " + path_lowram + " -o " + path_outputTest + " -t Task100_grid -tr nnUNetTrainer -m 3d_fullres -f all")
+                os.system('nnUNet_predict -i ' + path_lowram + ' -o ' + path_outputTest + ' -t Task100_grid -m 3d_fullres -f all --save_npz')
 
                 print('                                ')
                 print(f'Inference over {image} finished')

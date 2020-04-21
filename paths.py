@@ -31,9 +31,8 @@ PLEASE READ paths.md FOR INFORMATION TO HOW TO SET THIS UP
 # preprocessing_output_dir = os.environ['nnUNet_preprocessed'] if "nnUNet_preprocessed" in os.environ.keys() else None
 # network_training_output_dir_base = os.path.join(os.environ['RESULTS_FOLDER']) if "RESULTS_FOLDER" in os.environ.keys() else None
 
-# base = join(os.path.abspath(''), 'nnUNet_base')
-base = '/Users/pere/opt/anaconda3/envs/thesis/nnUNet/nnunet/nnUNet_base'
-# base = '/home/perecanals/nnunet_env/nnUNet/nnunet/nnUNet_base'
+# base = '/Users/pere/opt/anaconda3/envs/thesis/nnUNet/nnunet/nnUNet_base'
+base = '/home/perecanals/nnunet_env/nnUNet/nnunet/nnUNet_base'
 preprocessing_output_dir = join(base, 'nnUNet_preprocessed')
 network_training_output_dir_base = join(base, 'nnUNet_training_output_dir')
 

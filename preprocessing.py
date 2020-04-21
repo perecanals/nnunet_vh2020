@@ -145,7 +145,7 @@ def preprocessing(nnunet_dir):
 
     print('Starting preprocessing...')
 
-    os.system('nnUNet_plan_and_preprocess_task.py -t 100 -tl 16 -tf 8')
+    os.system('nnUNet_plan_and_preprocess -t 100 -tl 16 -tf 8')
 
     print('Preprocessing finished')
 

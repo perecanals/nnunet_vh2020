@@ -48,7 +48,7 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None):
         model = join(MODEL_DIR, 'model_best.model')
         pkl   = join(MODEL_DIR, 'model_best.pkl')
 
-        path_models = join(nnunet_dir, 'nnUNet_base/nnUNet_training_output_dir/3d_fullres/Task00_grid/nnUNetTrainer__nnUNetPlans/all/')
+        path_models = join(nnunet_dir, 'nnUNet_base/nnUNet_training_output_dir/3d_fullres/Task100_grid/nnUNetTrainer__nnUNetPlans/all/')
 
         test_dir = join(MODEL_DIR, 'test')
         maybe_mkdir_p(test_dir)
@@ -79,7 +79,7 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None):
             data = json.load(json_file)
             for image in data['test']:
                 list_imagesTest.append(image[11:])
-                list_labelsTest.append(image[:8] + 'L' + image[8:])
+                list_labelsTest.append(image[11:])
 
         # Remove preexisting nifti files in testing dirs
         for files in glob.glob(join(path_imagesTest, '*.gz')):
@@ -103,7 +103,7 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None):
         if LOW_RAM is not None:
             print('Performing inference with the whole testing set:')
             print('                                                ')
-            os.system("OMP_NUM_THREADS=1 python3 inference/predict_simple.py -i " + path_imagesTest + " -o " + path_outputTest + " -t Task00_grid -tr nnUNetTrainer -m 3d_fullres -f all")
+            os.system("OMP_NUM_THREADS=1 python3 inference/predict_simple.py -i " + path_imagesTest + " -o " + path_outputTest + " -t Task100_grid -tr nnUNetTrainer -m 3d_fullres -f all")
 
             print('                  ')
             print('Inference finished')
@@ -117,7 +117,7 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None):
 
                 print('Performing inference over', image)
                 print('                                ')
-                os.system("OMP_NUM_THREADS=1 python3 inference/predict_simple.py -i " + path_lowram + " -o " + path_outputTest + " -t Task00_grid -tr nnUNetTrainer -m 3d_fullres -f all")
+                os.system("OMP_NUM_THREADS=1 python3 inference/predict_simple.py -i " + path_lowram + " -o " + path_outputTest + " -t Task100_grid -tr nnUNetTrainer -m 3d_fullres -f all")
 
                 print('                                ')
                 print(f'Inference over {image} finished')

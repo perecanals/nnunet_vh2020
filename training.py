@@ -31,7 +31,7 @@ def training(nnunet_dir, FOLDS=1, SKIP_FOLD=0):
     '''
 
     # Paths
-    path_models = join(nnunet_dir, 'nnUNet_base/nnUNet_training_output_dir/3d_fullres/Task00_grid/nnUNetTrainer__nnUNetPlans')
+    path_models = join(nnunet_dir, 'nnUNet_base/nnUNet_training_output_dir/3d_fullres/Task100_grid/nnUNetTrainer__nnUNetPlans')
     path_save_model = join(nnunet_dir, 'models')
 
     # Create new directory for the model
@@ -52,7 +52,7 @@ def training(nnunet_dir, FOLDS=1, SKIP_FOLD=0):
 
             start = time()
 
-            os.system(f'OMP_NUM_THREADS=1 python3 run/run_training.py 3d_fullres nnUNetTrainer Task00_grid {str(fold)} --ndet')
+            os.system(f'OMP_NUM_THREADS=1 python3 run/run_training.py 3d_fullres nnUNetTrainer Task100_grid {str(fold)} --ndet')
 
             print('                                 ')
             print('End of training: fold',       fold)
@@ -65,7 +65,7 @@ def training(nnunet_dir, FOLDS=1, SKIP_FOLD=0):
 
             # Copy files from nnunet directory to personal directory
             shutil.copyfile(join(path_models, f'fold_{fold}', '*'), model_dir + '/')
-            shutil.copyfile(join(nnunet_dir, 'nnUNet_base/nnUNet_raw/Task00_grid/dataset.json'), model_dir +'/')
+            shutil.copyfile(join(nnunet_dir, 'nnUNet_base/nnUNet_raw/Task100_grid/dataset.json'), model_dir +'/')
 
             print('Files from present fold transferred to', fold_dir)
             print('                                                ')
@@ -97,9 +97,9 @@ def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None):
     path_images_base = join(nnunet_dir, 'database_vh/database_images')
     path_labels_base = join(nnunet_dir, 'database_vh/database_labels')
 
-    path_imagesTr = join(nnunet_dir, 'nnUNet_base/nnUNet_raw/Task00_grid/imagesTr')
-    path_labelsTr = join(nnunet_dir, 'nnUNet_base/nnUNet_raw/Task00_grid/labelsTr')
-    path_imagesTs = join(nnunet_dir, 'nnUNet_base/nnUNet_raw/Task00_grid/imagesTs')
+    path_imagesTr = join(nnunet_dir, 'nnUNet_base/nnUNet_raw/Task100_grid/imagesTr')
+    path_labelsTr = join(nnunet_dir, 'nnUNet_base/nnUNet_raw/Task100_grid/labelsTr')
+    path_imagesTs = join(nnunet_dir, 'nnUNet_base/nnUNet_raw/Task100_grid/imagesTs')
 
     imagesTr = './imagesTr/'
     labelsTr = './labelsTr/'
@@ -251,9 +251,9 @@ def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None):
     # Move json file to nnUNet_base dirs
     print('Moving .json to nnUNet_base directories...')
     os.rename(nnunet_dir + "/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw/Task00_grid/dataset.json")
-    shutil.copyfile(nnunet_dir + "/nnUNet_base/nnUNet_raw/Task00_grid/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_preprocessed/Task00_grid/dataset.json")
-    shutil.copyfile(nnunet_dir + "/nnUNet_base/nnUNet_raw/Task00_grid/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw_cropped/Task00_grid/dataset.json")
-    shutil.copyfile(nnunet_dir + "/nnUNet_base/nnUNet_raw/Task00_grid/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw_splitted/Task00_grid/dataset.json")
+    shutil.copyfile(nnunet_dir + "/nnUNet_base/nnUNet_raw/Task100_grid/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_preprocessed/Task100_grid/dataset.json")
+    shutil.copyfile(nnunet_dir + "/nnUNet_base/nnUNet_raw/Task100_grid/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw_cropped/Task100_grid/dataset.json")
+    shutil.copyfile(nnunet_dir + "/nnUNet_base/nnUNet_raw/Task100_grid/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw_splitted/Task100_grid/dataset.json")
 
     print('done')
     print('    ')

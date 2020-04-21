@@ -25,9 +25,9 @@ def preprocessing(nnunet_dir):
     path_images_base = join(nnunet_dir, 'database_vh/database_images')
     path_labels_base = join(nnunet_dir, 'database_vh/database_labels')
 
-    path_imagesTr = join(nnunet_dir, 'nnUNet_base/nnUNet_raw/Task00_grid/imagesTr')
-    path_labelsTr = join(nnunet_dir, 'nnUNet_base/nnUNet_raw/Task00_grid/labelsTr')
-    path_imagesTs = join(nnunet_dir, 'nnUNet_base/nnUNet_raw/Task00_grid/imagesTs')
+    path_imagesTr = join(nnunet_dir, 'nnUNet_base/nnUNet_raw/Task100_grid/imagesTr')
+    path_labelsTr = join(nnunet_dir, 'nnUNet_base/nnUNet_raw/Task100_grid/labelsTr')
+    path_imagesTs = join(nnunet_dir, 'nnUNet_base/nnUNet_raw/Task100_grid/imagesTs')
 
     imagesTr = './imagesTr/'
     labelsTr = './labelsTr/'
@@ -134,9 +134,9 @@ def preprocessing(nnunet_dir):
     print('    ')
 
     # Move json file to Task00_grid
-    print('Moving .json to Task00_grid directory...')
+    print('Moving .json to Task100_grid directory...')
 
-    os.rename(nnunet_dir + "/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw/Task00_grid/dataset.json")
+    os.rename(nnunet_dir + "/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw/Task100_grid/dataset.json")
 
     print('done')
     print('    ')
@@ -145,7 +145,7 @@ def preprocessing(nnunet_dir):
 
     print('Starting preprocessing...')
 
-    os.system('python3 experiment_planning/plan_and_preprocess_task.py -t Task00_grid -pl 16 -pf 8')
+    os.system('python3 experiment_planning/plan_and_preprocess_task.py -t Task100_grid -pl 16 -pf 8')
 
     print('Preprocessing finished')
 

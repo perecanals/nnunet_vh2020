@@ -8,117 +8,172 @@ import nibabel as nib
 from nibabel.testing import data_path
 from batchgenerators.utilities.file_and_folder_operations import maybe_mkdir_p, join
 
-import sklearn
-from sklearn.metrics import confusion_matrix
+from time import time 
 
-import time 
+def eval_metrics(nnunet_dir, MODEL_DIR):
+    ''' Evaluation metrics computation. This script is used either in 
+    TESTING mode or EVALUATION mode. In EVALUATION mode, it assumes that 
+    inference has been run over all images belonging to the testing set of
+    a model, and  stored in ./nnunet/models/[name_of_model]/test/data.
 
-def eval_metrics():
+    Voxel error (ve), intersection over union (iou) and Dice coefficient (dice)
+    are all computed in this evaluation.
 
-    # nnunet_dir = "/Users/pere/opt/anaconda3/envs/nnunet_env/nnUNet/nnunet"
-    nnunet_dir = "/home/perecanals/nnunet_env/nnUNet/nnunet"
+    Files containing results for all metrics and all prediction, as well as mean 
+    and standard deviation are saved in .../test/progress.
 
-    # start = time.time()
+    Git repository: https://github.com/perecanals/nnunet_vh2020.git
+        
+    '''
 
-    path_label = join(nnunet_dir, "inference_test/labels")
-    path_out = join(nnunet_dir, "inference_test/outputs")
+    start = time()
 
-    dir_label = os.fsencode(path_label)
-    dir_out = os.fsencode(path_out)
+    # Paths
+    test_dir = join(MODEL_DIR, 'test')
 
-    list_label = []; list_out = []
+    progress_dir = join(test_dir, 'progress')
+    maybe_mkdir_p(progress_dir)
 
-    for file in os.listdir(dir_label):
+    test_dir_labels = join(test_dir, 'data', 'labels')
+    test_dir_preds  = join(test_dir, 'data', 'preds' )
+
+    # Retrieve labels and predictions from data dir
+    print('Reading data...')
+    list_label = []; list_pred = []
+    for file in os.listdir(test_dir_labels):
         filename = os.fsdecode(file)
         if filename.endswith(".gz"):
             list_label.append(filename)
             continue
         else:
             continue
-
-    for file in os.listdir(dir_out):
+    for file in os.listdir(test_dir_preds):
         filename = os.fsdecode(file)
         if filename.endswith(".gz"):
-            list_out.append(filename)
+            list_pred.append(filename)
             continue
         else:
             continue
-
     list_label.sort()
-    list_out.sort()
+    list_pred.sort()
 
-    print(list_label)
-    print(list_out)
+    print('done')
+    print('    ')
 
-    accuracy = []; sensitivity = []; specificity = []; dice_score = []
+    # Initialize evaluation metrics vectors
+    ve   = np.empty([len(list_label)])
+    iou  = np.empty([len(list_label)])
+    dice = np.empty([len(list_label)])
 
-    # print("time 1", time.time()-start, "s")
+    print('Number of images for testing:', len(list_label))
+    print('                                              ')
 
-    for i in range(len(list_label)):
+    for idx in range(len(list_label)):
+        # Read niftis
+        print(f'Evaluation for {list_pred[idx]} ({list_label[idx]})')
+        label = np.array(nib.load(join(test_dir_labels, list_label[idx])).get_data())
+        pred  = np.array(nib.load(join(test_dir_preds,  list_pred[idx] )).get_data())
 
-        # start_loop = time.time()
+        # Compute evaluation metrics
+        ve_idx   = Voxel_error(label, pred)
+        iou_idx  = IoU(label, pred)
+        dice_idx = Dice(label, pred)
 
-        path_file_label = os.path.join(path_label, list_label[i])
-        img_label = nib.load(path_file_label)
-        path_file_out = os.path.join(path_out, list_out[i])
-        img_out = nib.load(path_file_out)
+        ve[idx]   = ve_idx
+        iou[idx]  = iou_idx
+        dice[idx] = dice_idx
 
-        img_label_data = img_label.get_data()
-        label = np.array(img_label_data)
-        img_out_data = img_out.get_data()
-        pred = np.array(img_out_data)
+        print('Voxel error:', '{:.6f}'.format(ve[idx])  )
+        print('IoU:',         '{:.6f}'.format(iou[idx]) )
+        print('Dice:',        '{:.6f}'.format(dice[idx]))
+        print('                                        ')
 
-        label_back = np.ones(label.shape) - label
-        pred_back = np.ones(pred.shape) - pred
+    ve_mean   = np.mean(ve)
+    ve_std    = np.std(ve)
+    iou_mean  = np.mean(iou)
+    iou_std   = np.std(iou)
+    dice_mean = np.mean(dice)
+    dice_std  = np.mean(dice)
 
-        # CM = confusion_matrix(t_label.view(-1), t_out.view(-1)) # Too slow!!!!!
+    np.savetxt(os.path.join(progress_dir, 've.out'),   ve  )
+    np.savetxt(os.path.join(progress_dir, 'iou.out'),  iou )
+    np.savetxt(os.path.join(progress_dir, 'dice.out'), dice)
 
-        # tn = CM[0,0] 
-        # fp = CM[0,1]
-        # fn = CM[1,0]
-        # tp = CM[1,1]
+    np.savetxt(os.path.join(progress_dir, 've_mean_std.out'),   [ve_mean,   ve_std]  )
+    np.savetxt(os.path.join(progress_dir, 'iou_mean_std.out'),  [iou_mean,  iou_std] )
+    np.savetxt(os.path.join(progress_dir, 'dice_mean_std.out'), [dice_mean, dice_std])
 
-        tn = np.sum(pred_back[label_back==1]==1)
-        tp = np.sum(pred[label==1]==1)
-        fn = np.sum(pred_back[label_back==0]==1)
-        fp = np.sum(pred[label==0]==1)
+    print('Files saved in', progress_dir)
+    print('                            ')
 
-        acc = (tn + tp) / (tn + tp + fn + fp)
-        sen = tp / (tp + fn)
-        spe = tn / (tn + fp)
-        dice = 2 * tp / (2 * tp + fp + fn)
+    print('Results:                                     ')
+    print('Mean voxel error:', '{:.6f}'.format(ve_mean)  )
+    print('Mean IoU:',         '{:.6f}'.format(iou_mean) )
+    print('Mean Dice:',        '{:.6f}'.format(dice_mean))
 
-        accuracy.append(acc)
-        sensitivity.append(sen)
-        specificity.append(spe)
-        dice_score.append(dice)
+    print(f'Evaluation took {time() - start} s ({len(list_label)} images)')
+    print('                                                                   ')
 
-        print('accuracy =', accuracy)
-        print('sensitivity =', sensitivity)
-        print('specificity =', specificity)
-        print('dice score =', dice_score)
 
-        # print("time 2", time.time()-start_loop, "s")
 
-    acc_mean = np.mean(accuracy)
-    acc_std = np.std(accuracy)
+##############################################################################################
+#--------------------------------------------------------------------------------------------#    
+##############################################################################################
 
-    sen_mean = np.mean(sensitivity)
-    sen_std = np.std(sensitivity)
 
-    spe_mean = np.mean(specificity)
-    spe_std = np.std(specificity)
 
-    dice_mean = np.mean(dice_score)
-    dice_std = np.std(dice_score)
+def Voxel_error(label, pred):
+    ''' Computes the voxel error of the network's prediction compared to the label corresponding to the same image.
+        Inputs:
+            - pred: prediction. Numpy array.
+            - label: label. Numpy array. 
 
-    # print('accuracy =', acc_mean, acc_std)
-    # print('sensitivity =', sen_mean, sen_std)
-    # print('specificity =', spe_mean, spe_std)
-    # print('dice score =', dice_mean, dice_std)
+        Output:
+            - ve: float.
 
-    # print("time 3", time.time()-start, "s")
+    '''
 
-    eval_met = [acc_mean, acc_std, sen_mean, sen_std, spe_mean, spe_std, dice_mean, dice_std]
+    ve = np.sum(abs(pred - label)) / pred.size
 
-    return eval_met
+    return ve
+
+
+def IoU(label, pred):
+    ''' Intersection over Union (IoU) between labels and predictions.
+        Inputs:
+            - pred: prediction. Numpy array.
+            - label: label. Numpy array. 
+
+        Output:
+            - iou: float.
+
+    '''
+
+    intersection = np.logical_and(pred, label)
+    union        = np.logical_or(pred,  label)
+
+    iou = np.sum(intersection) / np.sum(union)
+
+    return iou
+
+
+def Dice(label, pred):
+    ''' Dice coefficient (or f1-score, f-measure) between labels and predictions.
+        Inputs:
+            - pred: prediction. Numpy array.
+            - label: label. Numpy array. 
+
+        Output:
+            - dice: float.
+
+    '''
+
+    dice = np.sum(pred[label==1]==1)*2.0 / (np.sum(pred==1) + np.sum(label==1))
+
+    return dice
+
+
+
+##############################################################################################
+#--------------------------------------------------------------------------------------------#    
+##############################################################################################

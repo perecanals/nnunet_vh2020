@@ -67,6 +67,11 @@ print('                                                                         
 # Current directory (should be /nnunet)
 nnunet_dir = os.path.abspath('')
 
+# Set up environmental variables
+os.environ['nnUNet_raw_data_base'] = os.path.join(nnunet_dir, 'nnUNet_base')
+os.environ['nnUNet_preprocessed' ] = os.path.join(nnunet_dir, 'nnUNet_base', 'nnUNet_preprocessed')
+os.environ['RESULTS_FOLDER'      ] = os.path.join(nnunet_dir, 'nnUNet_base', 'nnUNet_training_output_dir')
+
 if MODE == 'PREPROCESSING':
     print('Running preprocessing')
     print('                     ')

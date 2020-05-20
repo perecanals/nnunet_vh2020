@@ -1,12 +1,13 @@
-import torch
-import numpy as np
-import torchvision
-import torchvision.transforms as transforms
-
 import os
+from glob import glob
+from batchgenerators.utilities.file_and_folder_operations import maybe_mkdir_p
+import numpy as np
+
 import nibabel as nib
 from nibabel.testing import data_path
-from batchgenerators.utilities.file_and_folder_operations import maybe_mkdir_p, join
+import torch
+import torchvision
+import torchvision.transforms as transforms
 
 from time import time 
 
@@ -29,33 +30,19 @@ def eval_metrics(nnunet_dir, MODEL_DIR):
     start = time()
 
     # Paths
-    test_dir = join(MODEL_DIR, 'test')
+    test_dir = os.path.join(MODEL_DIR, 'test')
 
-    progress_dir = join(test_dir, 'progress')
+    progress_dir = os.path.join(test_dir, 'progress')
     maybe_mkdir_p(progress_dir)
 
-    test_dir_labels = join(test_dir, 'data', 'labels')
-    test_dir_preds  = join(test_dir, 'data', 'preds' )
+    test_dir_labels = os.path.join(test_dir, 'data', 'labels')
+    test_dir_preds  = os.path.join(test_dir, 'data', 'preds' )
 
     # Retrieve labels and predictions from data dir
     print('Reading data...')
-    list_label = []; list_pred = []
-    for file in os.listdir(test_dir_labels):
-        filename = os.fsdecode(file)
-        if filename.endswith(".gz"):
-            list_label.append(filename)
-            continue
-        else:
-            continue
-    for file in os.listdir(test_dir_preds):
-        filename = os.fsdecode(file)
-        if filename.endswith(".gz"):
-            list_pred.append(filename)
-            continue
-        else:
-            continue
-    list_label.sort()
-    list_pred.sort()
+
+    list_label = sorted(glob(test_dir_labels))
+    list_pred  = sorted(glob(test_dir_preds) )
 
     print('done')
     print('    ')
@@ -70,9 +57,9 @@ def eval_metrics(nnunet_dir, MODEL_DIR):
 
     for idx in range(len(list_label)):
         # Read niftis
-        print(f'Evaluation for {list_pred[idx]} ({list_label[idx]})')
-        label = np.array(nib.load(join(test_dir_labels, list_label[idx])).get_data())
-        pred  = np.array(nib.load(join(test_dir_preds,  list_pred[idx] )).get_data())
+        print(f'Evaluation for {list_pred[idx][-15:]} ({list_label[idx][-15:]})')
+        label = nib.load(list_label[idx]).get_data()
+        pred  = nib.load(list_pred[idx] ).get_data()
 
         # Compute evaluation metrics
         ve_idx   = Voxel_error(label, pred)
@@ -95,13 +82,13 @@ def eval_metrics(nnunet_dir, MODEL_DIR):
     dice_mean = np.mean(dice)
     dice_std  = np.mean(dice)
 
-    np.savetxt(os.path.join(progress_dir, 've.out'),   ve  )
-    np.savetxt(os.path.join(progress_dir, 'iou.out'),  iou )
-    np.savetxt(os.path.join(progress_dir, 'dice.out'), dice)
+    np.savetxt(os.path.os.path.join(progress_dir, 've.out'),   ve  )
+    np.savetxt(os.path.os.path.join(progress_dir, 'iou.out'),  iou )
+    np.savetxt(os.path.os.path.join(progress_dir, 'dice.out'), dice)
 
-    np.savetxt(os.path.join(progress_dir, 've_mean_std.out'),   [ve_mean,   ve_std]  )
-    np.savetxt(os.path.join(progress_dir, 'iou_mean_std.out'),  [iou_mean,  iou_std] )
-    np.savetxt(os.path.join(progress_dir, 'dice_mean_std.out'), [dice_mean, dice_std])
+    np.savetxt(os.path.os.path.join(progress_dir, 've_mean_std.out'),   [ve_mean,   ve_std]  )
+    np.savetxt(os.path.os.path.join(progress_dir, 'iou_mean_std.out'),  [iou_mean,  iou_std] )
+    np.savetxt(os.path.os.path.join(progress_dir, 'dice_mean_std.out'), [dice_mean, dice_std])
 
     print('Files saved in', progress_dir)
     print('                            ')
@@ -152,7 +139,9 @@ def IoU(label, pred):
     intersection = np.logical_and(pred, label)
     union        = np.logical_or(pred,  label)
 
-    iou = np.sum(intersection) / np.sum(union)
+    smooth = 1e-6
+
+    iou = np.sum(intersection) / (np.sum(union) + smooth)
 
     return iou
 
@@ -168,7 +157,12 @@ def Dice(label, pred):
 
     '''
 
-    dice = np.sum(pred[label==1]==1)*2.0 / (np.sum(pred==1) + np.sum(label==1))
+    intersection = np.sum(np.logical_and(pred, label))
+    union        = np.sum(np.logical_or(pred,  label))
+
+    smooth = 1e-6
+
+    dice = 2 * intersection / (union + intersection + smooth)
 
     return dice
 

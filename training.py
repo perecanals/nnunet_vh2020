@@ -1,13 +1,13 @@
 import numpy as np
 
 import os
-import glob
+from glob import glob
 import shutil
 import json
 
 from time import time
 
-from batchgenerators.utilities.file_and_folder_operations import maybe_mkdir_p, join
+from batchgenerators.utilities.file_and_folder_operations import maybe_mkdir_p
 
 def training(nnunet_dir, FOLDS=1, SKIP_FOLD=0):
     ''' ############################### Training #############################################
@@ -26,17 +26,20 @@ def training(nnunet_dir, FOLDS=1, SKIP_FOLD=0):
     dir inside: ./nnunet/nnUNet_base/nnUNet_raw/Task00_grid/ 
 
     Git repository: https://github.com/perecanals/nnunet_vh2020.git
-    Original nnunet (Isensee et al. 2019): https://github.com/MIC-DKFZ/nnUNet.git
+    Original nnunet (Isensee et al. 2020[1]): https://github.com/MIC-DKFZ/nnUNet.git
+
+    [1] Fabian Isensee, Paul F. Jäger, Simon A. A. Kohl, Jens Petersen, Klaus H. Maier-Hein "Automated Design of Deep Learning 
+    Methods for Biomedical Image Segmentation" arXiv preprint arXiv:1904.08128 (2020).
 
     '''
 
     # Paths
-    path_models = join(nnunet_dir, 'nnUNet_base/nnUNet_training_output_dir/3d_fullres/Task100_grid/nnUNetTrainer__nnUNetPlans')
-    path_save_model = join(nnunet_dir, 'models')
+    path_models = os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_training_output_dir/nnUNet/3d_fullres/Task100_grid/nnUNetTrainerV2__nnUNetPlansv2.1')
+    path_save_model = os.path.join(nnunet_dir, 'models')
 
     # Create new directory for the model
     model_name = 'default_model'
-    model_dir = join(path_save_model, model_name)
+    model_dir = os.path.join(path_save_model, model_name)
     maybe_mkdir_p(model_dir)
 
     ################################### Training #############################################
@@ -60,12 +63,13 @@ def training(nnunet_dir, FOLDS=1, SKIP_FOLD=0):
             print('                                 ')
 
             # Create fold directory if necessary
-            fold_dir = join(model_dir, f'fold{fold}')
+            fold_dir = os.path.join(model_dir, f'fold{fold}')
             maybe_mkdir_p(fold_dir)
 
             # Copy files from nnunet directory to personal directory
-            shutil.copyfile(join(path_models, f'fold_{fold}', '*'), model_dir + '/')
-            shutil.copyfile(join(nnunet_dir, 'nnUNet_base/nnUNet_raw/Task100_grid/dataset.json'), model_dir +'/')
+            for files in os.listdir(os.path.join(path_models, f'fold_{fold}')):
+                shutil.copyfile(os.path.join(path_models, f'fold_{fold}/' + files), os.path.join(fold_dir, files))
+            shutil.copyfile(os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_raw_data/Task100_grid/dataset.json'), os.path.join(fold_dir, 'dataset.json'))
 
             print('Files from present fold transferred to', fold_dir)
             print('                                                ')
@@ -94,35 +98,20 @@ def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None):
     ################################# File management ########################################
 
     # Paths
-    path_images_base = join(nnunet_dir, 'database_vh/database_images')
-    path_labels_base = join(nnunet_dir, 'database_vh/database_labels')
+    path_images_base = os.path.join(nnunet_dir, 'database_vh/database_images')
+    path_labels_base = os.path.join(nnunet_dir, 'database_vh/database_labels')
 
-    path_imagesTr = join(nnunet_dir, 'nnUNet_base/nnUNet_raw/Task100_grid/imagesTr')
-    path_labelsTr = join(nnunet_dir, 'nnUNet_base/nnUNet_raw/Task100_grid/labelsTr')
-    path_imagesTs = join(nnunet_dir, 'nnUNet_base/nnUNet_raw/Task100_grid/imagesTs')
+    path_imagesTr = os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_raw_data/Task100_grid/imagesTr')
+    path_labelsTr = os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_raw_data/Task100_grid/labelsTr')
+    path_imagesTs = os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_raw_data/Task100_grid/imagesTs')
 
     imagesTr = './imagesTr/'
     labelsTr = './labelsTr/'
     imagesTs = './imagesTs/'
 
     # List all available images and labels
-    dir_images_base = os.fsencode(path_images_base)
-    dir_labels_base = os.fsencode(path_labels_base)
-    list_images_base = []; list_labels_base = []
-    for file in os.listdir(dir_images_base):
-        filename = os.fsdecode(file)
-        if filename.endswith('.gz'):
-            list_images_base.append(filename)
-            continue
-        else:
-            continue
-    for file in os.listdir(dir_labels_base):
-        filename = os.fsdecode(file)
-        if filename.endswith('.gz'):
-            list_labels_base.append(filename)
-            continue
-        else:
-            continue
+    list_images_base = [filename for filename in os.listdir(path_images_base) if filename.endswith('.nii.gz')]
+    list_labels_base = [filename for filename in os.listdir(path_labels_base) if filename.endswith('.nii.gz')]
 
     print('Total number of images in the database:', len(list_images_base))
     print('                                                              ')
@@ -132,16 +121,19 @@ def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None):
     print('                                             ')
 
     if DATASET_SIZE is None:
-        tr_prop   = 0.7 # includes validation (5:1)
+        tr_prop = 0.7 # includes validation (5:1)
         ts_prop = 1.0 - tr_prop
-        samp_tr   = int(np.round(tr_prop * len(list_images_base)))
+        samp_tr = int(np.round(tr_prop * len(list_images_base)))
         samp_ts = int(np.round(ts_prop * len(list_images_base)))
         while samp_tr + samp_ts > len(list_images_base):
             samp_ts += -1
         print('Training:testing = {}:{}'.format(int(100 * tr_prop), int(100 * ts_prop)))
     else:
         samp_tr = DATASET_SIZE
-        samp_ts = len(list_images_base) - samp_tr
+        if len(list_images_base) > 2 * DATASET_SIZE:
+            samp_ts = DATASET_SIZE
+        else:
+            samp_ts = len(list_images_base) - samp_tr
         print('Training dataset size is manually set to', DATASET_SIZE)
 
     print('                                            ')
@@ -165,28 +157,27 @@ def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None):
     # Remove all preexisting nifti files
     print('Removing possibly preexisting nifti files...')
 
-    for files in glob.glob(join(path_imagesTr, '*.gz')):
+    for files in glob(os.path.join(path_imagesTr, '*.gz')):
         os.remove(files)
-    for files in glob.glob(join(path_labelsTr, '*.gz')):
+    for files in glob(os.path.join(path_labelsTr, '*.gz')):
         os.remove(files)
-    for files in glob.glob(join(path_imagesTs, '*.gz')):
+    for files in glob(os.path.join(path_imagesTs, '*.gz')):
         os.remove(files)
-    list_imagesTr   = list_images_base_tr[:samp_tr]
-    list_labelsTr   = list_labels_base_tr[:samp_tr]
-    list_imagesTs = list_images_base_tr[samp_tr:]
 
     print('done')
     print('    ')
 
     # Copy files to corresponding directories
     print('Copying new files...')
-
+    list_imagesTr = list_images_base_tr[:samp_tr]
+    list_labelsTr = list_labels_base_tr[:samp_tr]
+    list_imagesTs = list_images_base_tr[samp_tr:samp_tr+samp_ts]
     for image in list_imagesTr:
-        shutil.copyfile(join(path_images_base, image), join(path_imagesTr, image[:8] + '_0000.nii.gz'))
+        shutil.copyfile(os.path.join(path_images_base, image), os.path.join(path_imagesTr, image[:8] + '_0000.nii.gz'))
     for label in list_labelsTr:
-        shutil.copyfile(join(path_labels_base, label), join(path_labelsTr, label))
+        shutil.copyfile(os.path.join(path_labels_base, label), os.path.join(path_labelsTr, label))
     for image in list_imagesTs:
-        shutil.copyfile(join(path_images_base, image), join(path_imagesTs, image))
+        shutil.copyfile(os.path.join(path_images_base, image), os.path.join(path_imagesTs, image))
 
     print('done')
     print('    ')
@@ -226,21 +217,20 @@ def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None):
 
     # Prepare the training and testing samples for the json file
     aux = []
-    for idx, _ in enumerate(list_imagesTr_json):
+    for idx, _ in enumerate(list_imagesTr):
         aux = np.append(aux, {
                         "image": list_imagesTr_json[idx],
                         "label": list_labelsTr_json[idx]
                     })
-    aux = aux.tolist()
 
     aux2 = []
-    for idx, _ in enumerate(list_imagesTs_json):
-        aux2 = np.append(aux2, list_imagesTs_json[idx])
-    if len(aux2) > 0:
-        aux2 = aux2.tolist()
+    for idx, _ in enumerate(list_imagesTs):
+        aux2 = np.append(aux2, {
+                        "image": list_imagesTs_json[idx],
+                    })
 
-    dataset['training'] = aux
-    dataset['test'] = aux2
+    dataset['training'] = list(aux)
+    dataset['test'] = list(aux2)
 
     with open('dataset.json', 'w') as outfile:
         json.dump(dataset, outfile, indent=4)
@@ -250,7 +240,7 @@ def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None):
 
     # Move json file to nnUNet_base dirs
     print('Moving .json to nnUNet_base directories...')
-    os.rename(nnunet_dir + "/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw_data/Task00_grid/dataset.json")
+    os.rename(nnunet_dir + "/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw_data/Task100_grid/dataset.json")
     shutil.copyfile(nnunet_dir + "/nnUNet_base/nnUNet_raw_data/Task100_grid/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_preprocessed/Task100_grid/dataset.json")
     shutil.copyfile(nnunet_dir + "/nnUNet_base/nnUNet_raw_data/Task100_grid/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw_cropped/Task100_grid/dataset.json")
 

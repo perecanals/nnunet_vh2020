@@ -1,11 +1,11 @@
 import numpy as np
 
 import os
-import glob
+from glob import glob
 import shutil
 import json
 
-from batchgenerators.utilities.file_and_folder_operations import maybe_mkdir_p, join
+from batchgenerators.utilities.file_and_folder_operations import maybe_mkdir_p
 
 def preprocessing(nnunet_dir):
     ''' ############################## Preprocessing #########################################
@@ -16,18 +16,21 @@ def preprocessing(nnunet_dir):
     dir inside: ./nnunet/nnUNet_base/nnUNet_raw/Task00_grid/ 
 
     Git repository: https://github.com/perecanals/nnunet_vh2020.git
-    Original nnunet: https://github.com/MIC-DKFZ/nnUNet.git
+    Original nnunet (Isensee et al. 2020[1]): https://github.com/MIC-DKFZ/nnUNet.git
+
+    [1] Fabian Isensee, Paul F. Jäger, Simon A. A. Kohl, Jens Petersen, Klaus H. Maier-Hein "Automated Design of Deep Learning 
+    Methods for Biomedical Image Segmentation" arXiv preprint arXiv:1904.08128 (2020).
 
      '''
     ################################## Preprocessing #########################################
 
     # Paths
-    path_images_base = join(nnunet_dir, 'database_vh/database_images')
-    path_labels_base = join(nnunet_dir, 'database_vh/database_labels')
+    path_images_base = os.path.join(nnunet_dir, 'database_vh/database_images')
+    path_labels_base = os.path.join(nnunet_dir, 'database_vh/database_labels')
 
-    path_imagesTr = join(nnunet_dir, 'nnUNet_base/nnUNet_raw_data/Task100_grid/imagesTr')
-    path_labelsTr = join(nnunet_dir, 'nnUNet_base/nnUNet_raw_data/Task100_grid/labelsTr')
-    path_imagesTs = join(nnunet_dir, 'nnUNet_base/nnUNet_raw_data/Task100_grid/imagesTs')
+    path_imagesTr = os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_raw_data/Task100_grid/imagesTr')
+    path_labelsTr = os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_raw_data/Task100_grid/labelsTr')
+    path_imagesTs = os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_raw_data/Task100_grid/imagesTs')
 
     imagesTr = './imagesTr/'
     labelsTr = './labelsTr/'
@@ -57,11 +60,11 @@ def preprocessing(nnunet_dir):
     # Remove all preexisting nifti files
     print('Removing possibly preexisting nifti files...')
 
-    for files in glob.glob(join(path_imagesTr, '*.gz')):
+    for files in glob(os.path.join(path_imagesTr, '*.gz')):
         os.remove(files)
-    for files in glob.glob(join(path_labelsTr, '*.gz')):
+    for files in glob(os.path.join(path_labelsTr, '*.gz')):
         os.remove(files)
-    for files in glob.glob(join(path_imagesTs, '*.gz')):
+    for files in glob(os.path.join(path_imagesTs, '*.gz')):
         os.remove(files)
 
     print('done')
@@ -71,9 +74,9 @@ def preprocessing(nnunet_dir):
     print('Copying new files...')
 
     for image in list_images_base:
-        shutil.copyfile(join(path_images_base, image),   join(path_imagesTr, image[:8] + '_0000.nii.gz'))
+        shutil.copyfile(os.path.join(path_images_base, image),   os.path.join(path_imagesTr, image[:8] + '_0000.nii.gz'))
     for label in list_labels_base:
-        shutil.copyfile(join(path_labels_base, label),   join(path_labelsTr, label))
+        shutil.copyfile(os.path.join(path_labels_base, label),   os.path.join(path_labelsTr, label))
 
     print('done')
     print('    ')

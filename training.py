@@ -9,7 +9,7 @@ from time import time
 
 from batchgenerators.utilities.file_and_folder_operations import maybe_mkdir_p
 
-def training(nnunet_dir, FOLDS=1, SKIP_FOLD=0):
+def training(nnunet_dir, FOLDS=1, SKIP_FOLD=0, MODEL=None, LOWRES=False, CONTINUE=False, TRAINER='default'):
     ''' ############################### Training #############################################
 
     Training of the nnunet (3-fold cross validation).
@@ -23,7 +23,7 @@ def training(nnunet_dir, FOLDS=1, SKIP_FOLD=0):
     perform prior to this script.
 
     Images (labels) should be in the database_images/ (database_labels/) 
-    dir inside: ./nnunet/nnUNet_base/nnUNet_raw/Task00_grid/ 
+    dir inside: ./nnunet/nnUNet_base/nnUNet_raw/Task100_grid/ 
 
     Git repository: https://github.com/perecanals/nnunet_vh2020.git
     Original nnunet (Isensee et al. 2020[1]): https://github.com/MIC-DKFZ/nnUNet.git
@@ -33,13 +33,21 @@ def training(nnunet_dir, FOLDS=1, SKIP_FOLD=0):
 
     '''
 
+    if TRAINER == 'default':
+        trainer = 'nnUNetTrainerV2'
+    elif TRAINER == 'initial_lr_1e3':
+        trainer = 'nnUNetTrainerV2_initial_lr_1e3'
+        print('Starting with an learning rate of 1e-3')
+        print('                                      ')
+
     # Paths
-    path_models = os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_training_output_dir/nnUNet/3d_fullres/Task100_grid/nnUNetTrainerV2__nnUNetPlansv2.1')
-    path_save_model = os.path.join(nnunet_dir, 'models')
+    if LOWRES:
+        path_models = os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_training_output_dir/nnUNet/3d_lowres/Task100_grid/' + trainer + '__nnUNetPlansv2.1')
+    else:
+        path_models = os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_training_output_dir/nnUNet/3d_fullres/Task100_grid/' + trainer + '__nnUNetPlansv2.1')
 
     # Create new directory for the model
-    model_name = 'default_model'
-    model_dir = os.path.join(path_save_model, model_name)
+    model_dir = os.path.join(nnunet_dir, 'models', 'Task100_' + MODEL, trainer + '__nnUNetPlansv2.1')
     maybe_mkdir_p(model_dir)
 
     ################################### Training #############################################
@@ -53,23 +61,46 @@ def training(nnunet_dir, FOLDS=1, SKIP_FOLD=0):
             print('Running training: fold', fold)
             print('                            ')
 
+            # Create fold directory if necessary
+            fold_dir = os.path.join(model_dir, f'fold_{fold}')
+            maybe_mkdir_p(fold_dir)
+
+            # if CONTINUE:
+                # maybe_mkdir_p(os.path.join(path_models, f'fold_{fold}'))
+                # for files in os.listdir(fold_dir):
+                #     shutil.copyfile(os.path.join(path_models, f'fold_{fold}', files), os.path.join(path_models, f'fold_{fold}', files))
+                # os.rename(os.path.join(nnunet_dir, f'nnUNet_base/nnUNet_training_output_dir/nnUNet/3d_lowres/Task100_{MODEL}'), os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_training_output_dir/nnUNet/3d_lowres/Task100_grid'))
+
             start = time()
 
-            os.system(f'nnUNet_train 3d_fullres nnUNetTrainerV2 Task100_grid {str(fold)}')
+            if LOWRES:
+                print('Using low resolution (1/3) images')
+                if CONTINUE:
+                    print('Continuing training')
+                    # os.rename(os.path.join(nnunet_dir, f'nnUNet_base/nnUNet_training_output_dir/nnUNet/3d_lowres/Task100_{MODEL}'), os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_training_output_dir/nnUNet/3d_lowres/Task100_grid'))
+                    os.system('nnUNet_train 3d_lowres ' + trainer + f' Task100_grid {str(fold)} -c')
+                else:
+                    os.system('nnUNet_train 3d_lowres ' + trainer + f' Task100_grid {str(fold)}')
+            else:
+                print('Using full resolution images')
+                if CONTINUE:
+                    print('Continuing training')
+                    # os.rename(os.path.join(nnunet_dir, f'nnUNet_base/nnUNet_training_output_dir/nnUNet/3d_lowres/Task100_{MODEL}'), os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_training_output_dir/nnUNet/3d_lowres/Task100_grid'))
+                    os.system('nnUNet_train 3d_fullres ' + trainer + f' Task100_grid {str(fold)} -c')
+                else:
+                    os.system('nnUNet_train 3d_fullres ' + trainer + f' Task100_grid {str(fold)}')
 
             print('                                 ')
             print('End of training: fold',       fold)
             print(f'Training took {time() - start} s')
             print('                                 ')
 
-            # Create fold directory if necessary
-            fold_dir = os.path.join(model_dir, f'fold{fold}')
-            maybe_mkdir_p(fold_dir)
-
             # Copy files from nnunet directory to personal directory
             for files in os.listdir(os.path.join(path_models, f'fold_{fold}')):
-                shutil.copyfile(os.path.join(path_models, f'fold_{fold}/' + files), os.path.join(fold_dir, files))
-            shutil.copyfile(os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_raw_data/Task100_grid/dataset.json'), os.path.join(fold_dir, 'dataset.json'))
+                shutil.copyfile(os.path.join(path_models, f'fold_{fold}', files), os.path.join(fold_dir, files))
+
+            # Renaming directory to identify better
+            # os.rename(os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_training_output_dir/nnUNet/3d_lowres/Task100_grid'), os.path.join(nnunet_dir, f'nnUNet_base/nnUNet_training_output_dir/nnUNet/3d_lowres/Task100_{MODEL}'))
 
             print('Files from present fold transferred to', fold_dir)
             print('                                                ')
@@ -84,7 +115,7 @@ def training(nnunet_dir, FOLDS=1, SKIP_FOLD=0):
 
 
 
-def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None):
+def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None, MODEL=None, LOWRES=False, TRAINER='default'):
     ''' ############################# File management ########################################
 
     File management for training/testing of a nnunet model.
@@ -96,6 +127,9 @@ def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None):
 
     '''
     ################################# File management ########################################
+
+    if MODEL is None:
+        raise ValueError('Please enter a valid model name')
 
     # Paths
     path_images_base = os.path.join(nnunet_dir, 'database_vh/database_images')
@@ -110,8 +144,8 @@ def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None):
     imagesTs = './imagesTs/'
 
     # List all available images and labels
-    list_images_base = [filename for filename in os.listdir(path_images_base) if filename.endswith('.nii.gz')]
-    list_labels_base = [filename for filename in os.listdir(path_labels_base) if filename.endswith('.nii.gz')]
+    list_images_base = sorted([filename for filename in os.listdir(path_images_base) if filename.endswith('.nii.gz')])
+    list_labels_base = sorted([filename for filename in os.listdir(path_labels_base) if filename.endswith('.nii.gz')])
 
     print('Total number of images in the database:', len(list_images_base))
     print('                                                              ')
@@ -176,8 +210,8 @@ def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None):
         shutil.copyfile(os.path.join(path_images_base, image), os.path.join(path_imagesTr, image[:8] + '_0000.nii.gz'))
     for label in list_labelsTr:
         shutil.copyfile(os.path.join(path_labels_base, label), os.path.join(path_labelsTr, label))
-    for image in list_imagesTs:
-        shutil.copyfile(os.path.join(path_images_base, image), os.path.join(path_imagesTs, image))
+    # for image in list_imagesTs:
+    #     shutil.copyfile(os.path.join(path_images_base, image), os.path.join(path_imagesTs, image))
 
     print('done')
     print('    ')
@@ -194,6 +228,10 @@ def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None):
     for idx, _ in enumerate(list_imagesTs):
         list_imagesTs_json[idx] = imagesTs + list_imagesTs[idx]
 
+    list_imagesTr_json = sorted(list_imagesTr_json)
+    list_labelsTr_json = sorted(list_labelsTr_json)
+    list_imagesTs_json = sorted(list_imagesTs_json)   
+
     dataset = {}
     dataset = {
         "name": "StrokeVessels",
@@ -202,6 +240,8 @@ def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None):
         "licence": "-",
         "release": "1.0 08/01/2020",
         "tensorImageSize": "3D",
+        "lowres": LOWRES,
+        "trainer": TRAINER,
         "modality": {
             "0": "CT"
         },
@@ -209,6 +249,7 @@ def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None):
             "0": "background",
             "1": "vessel"
         },
+        "model": MODEL,
         "numTraining": samp_tr,
         "numTest": samp_ts,
         "training": [],
@@ -217,14 +258,14 @@ def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None):
 
     # Prepare the training and testing samples for the json file
     aux = []
-    for idx, _ in enumerate(list_imagesTr):
+    for idx, _ in enumerate(list_imagesTr_json):
         aux = np.append(aux, {
                         "image": list_imagesTr_json[idx],
                         "label": list_labelsTr_json[idx]
                     })
 
     aux2 = []
-    for idx, _ in enumerate(list_imagesTs):
+    for idx, _ in enumerate(list_imagesTs_json):
         aux2 = np.append(aux2, {
                         "image": list_imagesTs_json[idx],
                     })
@@ -240,9 +281,13 @@ def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None):
 
     # Move json file to nnUNet_base dirs
     print('Moving .json to nnUNet_base directories...')
-    os.rename(nnunet_dir + "/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw_data/Task100_grid/dataset.json")
-    shutil.copyfile(nnunet_dir + "/nnUNet_base/nnUNet_raw_data/Task100_grid/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_preprocessed/Task100_grid/dataset.json")
-    shutil.copyfile(nnunet_dir + "/nnUNet_base/nnUNet_raw_data/Task100_grid/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw_cropped/Task100_grid/dataset.json")
+    os.rename(nnunet_dir + '/dataset.json', nnunet_dir + '/nnUNet_base/nnUNet_raw_data/Task100_grid/dataset.json')
+    shutil.copyfile(nnunet_dir + '/nnUNet_base/nnUNet_raw_data/Task100_grid/dataset.json', nnunet_dir + '/nnUNet_base/nnUNet_preprocessed/Task100_grid/dataset.json')
+
+    # Create new directory for the model
+    model_dir = os.path.join(nnunet_dir, 'models', 'Task100_' + MODEL, 'nnUNetTrainerV2__nnUNetPlansv2.1')
+    maybe_mkdir_p(model_dir)
+    shutil.copyfile(os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_preprocessed/Task100_grid/dataset.json'), os.path.join(model_dir, 'dataset.json'))
 
     print('done')
     print('    ')

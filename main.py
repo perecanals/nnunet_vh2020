@@ -16,9 +16,12 @@ from testing import testing
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('-m', '--mode', type=str,required=True, 
+parser.add_argument('-m', '--mode', type=str, required=True, 
     help='choose from the following options: ::PREPROCESSING::, ::TRAINING::, '
      '::TESTING::, ::EVALUATION:: or ::INFERENCE::. Required.')
+
+parser.add_argument('-model', '--model', type=str, required=True, 
+    help='Please input a model name. Required.')
 
 parser.add_argument('-s', '--seed', type=int, required=False, default=0, 
     help='random seed for the dataset ordering (training and testing) required.')
@@ -34,25 +37,44 @@ parser.add_argument('-sk', '--skip_fold', type=int, required=False, default=0,
     help='it skips folds below number specified. E.g. if --skip_fold is set to ::1::, it will '
          'skip the first fold (fold 0). Not required.')
 
-parser.add_argument('-md', '--model_dir', type=str, required=False, 
-    help='path to the directory containing the model that we want to use for ::TESTING::. Required for '
-         '::TESTING:: and ::EVALUATRION:: modes.')
+parser.add_argument('-sk_fm', '--skip_file_management', type=bool, required=False, default=False, 
+    help='skips file management for ::TRAINING:: mode. Use in case you are sure files in imagesTr/labelsTr/imagesTs '
+         'are the ones desired (e.g. working with several folds in colab). Not required.')
 
 parser.add_argument('-ram', '--low_ram', type=str, required=False, 
     help='use in case of low RAM memory for ::TESTING::. It will inference one image at the time. Input '
          '::y::. Not required')
 
+parser.add_argument('-lowres', '--lowres', type=bool, required=False, default=False,
+    help='use in case you want to work with lowres images. Not required.')
+
+parser.add_argument('-c', '--cont', type=bool, required=False, default=False,
+    help='use in case you want to continue training. Not required.')
+
+parser.add_argument('-trainer', '--trainer', type=str, required=False, default='default',
+    help='choose a trainer class from those in nnunet.training.network.training. '
+         'Choose between ::initial_lr_1e3::. Not required.')
+
 
 args = parser.parse_args()
 
-MODE           = args.mode
-SEED           = args.seed
-DATASET_SIZE   = args.dataset_size
-FOLDS          = args.folds
-SKIP_FOLD      = args.skip_fold
-MODEL_DIR      = args.model_dir
-LOW_RAM        = args.low_ram
+MODE         = args.mode
+MODEL        = args.model
+SEED         = args.seed
+DATASET_SIZE = args.dataset_size
+FOLDS        = args.folds
+SKIP_FOLD    = args.skip_fold
+SKIP_FM      = args.skip_file_management
+LOW_RAM      = args.low_ram
+LOWRES       = args.lowres
+CONTINUE     = args.cont
+TRAINER      = args.trainer
 
+if LOWRES:
+    MODEL = MODEL + '_lowres'
+
+MODEL = MODEL + f'_{TRAINER}_{SEED}'
+    
 ##############################################################################################
 #--------------------------------------------------------------------------------------------#    
 
@@ -63,6 +85,9 @@ print('                                                                         
 
 #--------------------------------------------------------------------------------------------#    
 ##############################################################################################
+
+print('Working on model', MODEL)
+print('                       ')
 
 # Current directory (should be /nnunet)
 nnunet_dir = os.path.abspath('')
@@ -78,18 +103,28 @@ if MODE == 'PREPROCESSING':
     preprocessing(nnunet_dir)
 
 elif MODE == 'TRAINING':
-    print('Running file management')
-    print('                       ')
-    file_management(nnunet_dir, SEED=SEED, DATASET_SIZE=DATASET_SIZE) 
+    if not SKIP_FM:
+        print('Running file management')
+        print('                       ')
+        file_management(nnunet_dir, SEED=SEED, DATASET_SIZE=DATASET_SIZE, MODEL=MODEL, LOWRES=LOWRES, TRAINER=TRAINER) 
 
     print('Running training')
     print('                ')
-    # training(nnunet_dir, FOLDS=FOLDS, SKIP_FOLD=SKIP_FOLD)
+    training(nnunet_dir, FOLDS=FOLDS, SKIP_FOLD=SKIP_FOLD, MODEL=MODEL, LOWRES=LOWRES, CONTINUE=CONTINUE, TRAINER=TRAINER)
 
-elif MODE == 'TESTING' or MODE == 'EVALUATION' or MODE == 'INFERENCE':
+elif MODE == 'TESTING' or MODE == 'EVALUATION' or MODE == 'INFERENCE' or MODE == 'TRAIN_TEST' or MODE == 'TRAIN_EVAL' or MODE == 'TEST_ALL' or MODE == 'EVAL_ALL':
+
+    if TRAINER == 'default':
+        trainer = 'nnUNetTrainerV2'
+    elif TRAINER == 'initial_lr_1e3':
+        trainer = 'nnUNetTrainerV2_initial_lr_1e3'
+
+    MODEL_DIR = os.path.join(nnunet_dir, 'models', 'Task100_' + MODEL, trainer + '__nnUNetPlansv2.1', f'fold_{FOLDS}')
+
     print('Running testing on model', MODEL_DIR)
+    print('Mode:', MODE                        )
     print('                                   ')
-    testing(nnunet_dir, MODEL_DIR=MODEL_DIR, MODE=MODE, LOW_RAM=LOW_RAM)
+    testing(nnunet_dir, MODEL_DIR=MODEL_DIR, MODE=MODE, LOW_RAM=LOW_RAM, MODEL=MODEL, LOWRES=LOWRES, TRAINER=TRAINER)
 
 else:
     ValueError('Please introduce one of the possible modes. See main.py -h for more information.')

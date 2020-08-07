@@ -91,6 +91,9 @@ def preprocessing(nnunet_dir):
         list_imagesTr_json[idx] = imagesTr + list_images_base[idx]
         list_labelsTr_json[idx] = labelsTr + list_labels_base[idx]
 
+    list_imagesTr_json = sorted(list_imagesTr_json)
+    list_labelsTr_json = sorted(list_labelsTr_json)
+
     dataset = {}
     dataset = {
         "name": "Data preprocessing",
@@ -136,7 +139,7 @@ def preprocessing(nnunet_dir):
     print('done')
     print('    ')
 
-    # Move json file to Task00_grid
+    # Move json file to Task100_grid
     print('Moving .json to Task100_grid directory...')
 
     os.rename(nnunet_dir + "/dataset.json", nnunet_dir + "/nnUNet_base/nnUNet_raw_data/Task100_grid/dataset.json")
@@ -148,7 +151,7 @@ def preprocessing(nnunet_dir):
 
     print('Starting preprocessing...')
 
-    os.system('nnUNet_plan_and_preprocess -t 100 -tl 16 -tf 8')
+    os.system('nnUNet_plan_and_preprocess -t 100 -tl 8 -tf 2')
 
     print('Preprocessing finished')
 

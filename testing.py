@@ -10,7 +10,7 @@ from evaluation_metrics import eval_metrics
 
 from time import time
 
-def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None):
+def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None, MODEL=None, LOWRES=False, TRAINER='default'):
     ''' ################################ Testing #############################################
 
     Testing of the nnunet trained models. All images and labels in the 
@@ -20,9 +20,10 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None):
     MODEL_DIR.
 
     Evaluation metrics computed: 
-        - IoU
         - Dice coefficient
-        - Voxel error
+        - Jaccard index
+        - Precision
+        - Recall
         
     See evaluation_metrics.py for more information.
 
@@ -36,7 +37,12 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None):
 
     if MODEL_DIR is None: ValueError('Please input path to model. See main.py -h for more information.')
 
-    if MODE == 'TESTING' or MODE == 'INFERENCE':
+    if TRAINER == 'default':
+        trainer = 'nnUNetTrainerV2'
+    elif TRAINER == 'initial_lr_1e3':
+        trainer = 'nnUNetTrainerV2_initial_lr_1e3'
+
+    if MODE == 'TESTING' or MODE == 'INFERENCE' or MODE == 'TRAIN_TEST' or MODE == 'TEST_ALL':
 
         ################################## Testing ###########################################
 
@@ -46,9 +52,9 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None):
 
         maybe_mkdir_p(os.path.join(nnunet_dir, 'inference_test'))
 
-        path_imagesTest = os.path.join(nnunet_dir,  'inference_test/input' )
-        path_labelsTest = os.path.join(nnunet_dir,  'inference_test/labels')
-        path_outputTest = os.path.join(nnunet_dir,  'inference_test/output')
+        path_imagesTest = os.path.join(nnunet_dir, 'inference_test/input' )
+        path_labelsTest = os.path.join(nnunet_dir, 'inference_test/labels')
+        path_outputTest = os.path.join(nnunet_dir, 'inference_test/output')
 
         maybe_mkdir_p(path_imagesTest)
         maybe_mkdir_p(path_labelsTest)
@@ -56,17 +62,28 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None):
 
         model = os.path.join(MODEL_DIR, 'model_best.model')
         pkl   = os.path.join(MODEL_DIR, 'model_best.model.pkl')
+        plans = os.path.join(MODEL_DIR[:-7], 'plans.pkl')
 
-        path_models = os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_training_output_dir/nnUNet/3d_fullres/Task100_grid/nnUNetTrainerV2__nnUNetPlansv2.1/all/')
+        if LOWRES:
+            path_models = os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_training_output_dir/nnUNet/3d_lowres/Task100_grid/' + trainer + '__nnUNetPlansv2.1/all')
+        else:
+            path_models = os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_training_output_dir/nnUNet/3d_fullres/Task100_grid/' + trainer + '__nnUNetPlansv2.1/all')
+
         maybe_mkdir_p(path_models)
+
+        shutil.copyfile(plans, os.path.join(path_models[:-4], 'plans.pkl'))
 
         test_dir = os.path.join(MODEL_DIR, 'test')
         maybe_mkdir_p(test_dir)
 
-        test_dir_labels = os.path.join(test_dir, 'data', 'labels')
-        test_dir_preds  = os.path.join(test_dir, 'data', 'preds' )
-        maybe_mkdir_p(os.path.join(test_dir, 'data', 'labels'))
-        maybe_mkdir_p(os.path.join(test_dir, 'data', 'preds' ))
+        if MODE == 'TRAIN_TEST':
+            test_dir_labels = os.path.join(test_dir, 'data_training', 'labels')
+            test_dir_preds  = os.path.join(test_dir, 'data_training', 'preds' )
+        else:
+            test_dir_labels = os.path.join(test_dir, 'data', 'labels')
+            test_dir_preds  = os.path.join(test_dir, 'data', 'preds' )
+        maybe_mkdir_p(test_dir_labels)
+        maybe_mkdir_p(test_dir_preds)
 
         # Copy selected model to nnunet output dir
         print('Copying selected model to nnUNet output dir for inference...')
@@ -86,12 +103,28 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None):
         # Extract test images and labels from dataset.json
         print('Extracting test images and labels...')
         list_imagesTest = []; list_labelsTest = []
-        print(os.path.join(MODEL_DIR, 'dataset.json'))
-        with open(os.path.join(MODEL_DIR, 'dataset.json')) as json_file:
-            data = json.load(json_file)
-            for image in data['test']:
-                list_imagesTest.append(image['image'][11:])
-                list_labelsTest.append(image['image'][11:])
+        if MODE != 'TEST_ALL':
+            print(os.path.join(MODEL_DIR[:-6], 'dataset.json'))
+            with open(os.path.join(MODEL_DIR[:-6], 'dataset.json')) as json_file:
+                data = json.load(json_file)
+                if MODE == 'TRAIN_TEST':
+                    for image in data['training']:
+                        list_imagesTest.append(image['image'])
+                        list_labelsTest.append(image['image'])
+                else:
+                    for image in data['test']:
+                        list_imagesTest.append(image['image'])
+                        list_labelsTest.append(image['image'])
+        else:
+            train_list = []
+            with open(os.path.join(MODEL_DIR[:-6], 'dataset.json')) as json_file:
+                data = json.load(json_file)
+                for image in data['training']:
+                    train_list.append(image['image'][-15:])
+            for image in os.listdir(path_images_base):
+                if image not in train_list:
+                    list_imagesTest.append(image)
+                    list_labelsTest.append(image)
 
         # Remove preexisting nifti files in testing dirs
         for files in glob(os.path.join(path_imagesTest, '*.gz')):
@@ -101,9 +134,8 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None):
 
         # Copy testing images and labels to testing dirs
         for image in list_imagesTest:
-            shutil.copyfile(os.path.join(path_images_base, image), os.path.join(path_imagesTest, f'{image[:8]}_0000.nii.gz'))
-        for label in list_labelsTest:
-            shutil.copyfile(os.path.join(path_labels_base, label), os.path.join(path_labelsTest, label))
+            shutil.copyfile(os.path.join(path_images_base, image[-15:]), os.path.join(path_imagesTest, f'{image[-15:-7]}_0000.nii.gz'))
+            shutil.copyfile(os.path.join(path_labels_base, image[-15:]), os.path.join(path_labelsTest, image[-15:]))
 
         print('done')
         print('    ')
@@ -113,23 +145,43 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None):
         start = time()
 
         if LOW_RAM is not None:
-            for image in list_imagesTest:
-                # Remove preexisting files from auxiliar dir
-                for files in glob(os.path.join(path_lowram, '*.gz')):
-                    os.remove(files)
-                # Copy a single image to auxiliar dir
-                shutil.copyfile(os.path.join(path_imagesTest, f'{image[:8]}_0000.nii.gz'), os.path.join(path_lowram, f'{image[:8]}_0000.nii.gz'))
+            if path_imagesTest[:8] == '/content': # We are working on drive, we need to get rid of spaces in the path
+                path_outputTest = path_outputTest[:17] + '\ ' + path_outputTest[18:]
+            for image in os.listdir(path_imagesTest):
+                if image.endswith('nii.gz'):
+                    # Remove preexisting files from auxiliar dir
+                    for files in glob(os.path.join(path_lowram, '*.gz')):
+                        os.remove(files)
+                    print('Performing inference over', image)
+                    print('                                ')
+                    
+                    # Copy a single image to auxiliar dir
+                    shutil.copyfile(os.path.join(path_imagesTest, image), os.path.join(path_lowram, image))
 
-                print('Performing inference over', image)
-                print('                                ')
-                os.system('nnUNet_predict -i ' + path_lowram + ' -o ' + path_outputTest + ' -t Task100_grid -m 3d_fullres -f all --save_npz')
+                    if path_imagesTest[:8] == '/content':
+                        path_lowram = path_lowram[:17] + '\ ' + path_lowram[18:]
 
-                print('                                ')
-                print(f'Inference over {image} finished')
+                    if LOWRES:
+                        os.system('nnUNet_predict -i ' + path_lowram + ' -o ' + path_outputTest + f' -t Task100_grid -m 3d_lowres -f all')
+                    else:
+                        os.system('nnUNet_predict -i ' + path_lowram + ' -o ' + path_outputTest + f' -t Task100_grid -m 3d_fullres -f all ')
+
+                    if path_imagesTest[:8] == '/content':
+                        path_lowram = os.path.join(path_imagesTest, 'low_ram')
+
+                    print(f'Inference over {image} finished')
+                    print('                                ')
         else:
-            print('Performing inference with the whole testing set:')
-            print('                                                ')
-            os.system('nnUNet_predict -i ' + path_imagesTest + ' -o ' + path_outputTest + ' -t Task100_grid -m 3d_fullres -f all --save_npz')
+            if path_imagesTest[:8] == '/content': # We are working on drive, we need to get rid of spaces in the path
+                path_imagesTest = path_imagesTest[:17] + '\ ' + path_imagesTest[18:]
+                path_outputTest = path_outputTest[:17] + '\ ' + path_outputTest[18:]
+
+            print('Performing inference with the testing set:')
+            print('                                          ')
+            if LOWRES:
+                os.system('nnUNet_predict -i ' + path_imagesTest + ' -o ' + path_outputTest + f' -t Task100_grid -m 3d_lowres -f all --mode fastest --all_in_gpu True')
+            else:
+                os.system('nnUNet_predict -i ' + path_imagesTest + ' -o ' + path_outputTest + f' -t Task100_grid -m 3d_fullres -f all --mode fastest --all_in_gpu True')
 
             print('                  ')
             print('Inference finished')
@@ -140,20 +192,24 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None):
         # Move all inferred images and labels to test dir
         print('Moving all labels and predictions to:')
         print(test_dir                               )
-        for label in glob(os.path.join(path_labelsTest, '*.gz')):  
-            os.rename(os.path.join(path_labelsTest, label), os.path.join(test_dir_labels, label))
-        for pred  in glob(os.path.join(path_outputTest, '*.gz')):
-            os.rename(os.path.join(path_outputTest, pred),  os.path.join(test_dir_preds,  pred ))
+        path_labelsTest = os.path.join(nnunet_dir, 'inference_test/labels')
+        path_outputTest = os.path.join(nnunet_dir, 'inference_test/output')
+        for label in os.listdir(path_labelsTest):  
+            if label.endswith('nii.gz'):
+                os.rename(os.path.join(path_labelsTest, label), os.path.join(test_dir_labels, label))
+        for pred  in os.listdir(path_outputTest):
+            if pred.endswith('nii.gz'):
+                os.rename(os.path.join(path_outputTest, pred),  os.path.join(test_dir_preds,  pred ))
 
-            print('done')
-            print('    ')
+        print('done')
+        print('    ')
 
-    if MODE == 'TESTING' or MODE == 'EVALUATION':
+    if MODE == 'TESTING' or MODE == 'EVALUATION' or MODE == 'TRAIN_TEST' or MODE == 'TRAIN_EVAL' or MODE == 'TEST_ALL' or MODE == 'EVAL_ALL':
 
         ################################ Evaluation ##########################################
 
         # Perform evaluation over inferred samples
-        eval_metrics(nnunet_dir, MODEL_DIR)
+        eval_metrics(nnunet_dir, MODEL_DIR, MODE)
 
     print('End of testing')
 

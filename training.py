@@ -9,7 +9,7 @@ from time import time
 
 from batchgenerators.utilities.file_and_folder_operations import maybe_mkdir_p
 
-def training(nnunet_dir, FOLDS=1, SKIP_FOLD=0, MODEL=None, LOWRES=False, CONTINUE=False, TRAINER='default'):
+def training(nnunet_dir, FOLDS=1, SKIP_FOLD=0, MODEL=None, LOWRES=False, CONTINUE=False, trainer='nnUNetTrainerV2'):
     ''' ############################### Training #############################################
 
     Training of the nnunet (3-fold cross validation).
@@ -33,12 +33,31 @@ def training(nnunet_dir, FOLDS=1, SKIP_FOLD=0, MODEL=None, LOWRES=False, CONTINU
 
     '''
 
-    if TRAINER == 'default':
-        trainer = 'nnUNetTrainerV2'
-    elif TRAINER == 'initial_lr_1e3':
-        trainer = 'nnUNetTrainerV2_initial_lr_1e3'
+    if trainer == 'nnUNetTrainerV2':
+        print('Using default trainer')
+        print('                     ')
+    elif trainer == 'nnUNetTrainerV2_initial_lr_1e3':
         print('Starting with an learning rate of 1e-3')
         print('                                      ')
+    elif trainer == 'nnUNetTrainerV2_Adam':
+        print('Using Adam as optimizer')
+        print('                       ')
+    elif trainer == 'nnUNetTrainerV2_initial_lr_1e3_Adam':
+        print('Starting with an learning rate of 1e-3 and Adam')
+        print('                                      ')
+    elif trainer == 'nnUNetTrainerV2_SGD_ReduceOnPlateau':
+        print('Using SGD_ReduceLROnPlateau')
+        print('                       ')
+    elif trainer == 'initial_lr_1e3_SGD_ReduceOnPlateau':
+        print('Using initial_lr_1e3_SGD_ReduceOnPlateau')
+        print('                                        ')
+    elif trainer == 'nnUNetTrainerV2_Loss_Jacc_CE':
+        print('Using Jaccard and CE loss')
+        print('                         ')
+    elif trainer == 'nnUNetTrainerV2_initial_lr_1e3_Loss_Jacc_CE':
+        print('Using Jaccard and CE loss and initial lr of 1e-3')
+        print('                                                ')
+
 
     # Paths
     if LOWRES:
@@ -64,12 +83,6 @@ def training(nnunet_dir, FOLDS=1, SKIP_FOLD=0, MODEL=None, LOWRES=False, CONTINU
             # Create fold directory if necessary
             fold_dir = os.path.join(model_dir, f'fold_{fold}')
             maybe_mkdir_p(fold_dir)
-
-            # if CONTINUE:
-                # maybe_mkdir_p(os.path.join(path_models, f'fold_{fold}'))
-                # for files in os.listdir(fold_dir):
-                #     shutil.copyfile(os.path.join(path_models, f'fold_{fold}', files), os.path.join(path_models, f'fold_{fold}', files))
-                # os.rename(os.path.join(nnunet_dir, f'nnUNet_base/nnUNet_training_output_dir/nnUNet/3d_lowres/Task100_{MODEL}'), os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_training_output_dir/nnUNet/3d_lowres/Task100_grid'))
 
             start = time()
 
@@ -115,7 +128,7 @@ def training(nnunet_dir, FOLDS=1, SKIP_FOLD=0, MODEL=None, LOWRES=False, CONTINU
 
 
 
-def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None, MODEL=None, LOWRES=False, TRAINER='default'):
+def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None, MODEL=None, LOWRES=False, trainer='nnUNetTrainerV2'):
     ''' ############################# File management ########################################
 
     File management for training/testing of a nnunet model.
@@ -138,6 +151,12 @@ def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None, MODEL=None, LOWRES=Fa
     path_imagesTr = os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_raw_data/Task100_grid/imagesTr')
     path_labelsTr = os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_raw_data/Task100_grid/labelsTr')
     path_imagesTs = os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_raw_data/Task100_grid/imagesTs')
+
+    path_preprocessed = os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_preprocessed/Task100_grid/nnUNetData_plans_v2.1_stage0')
+    path_preprocessed_all = os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_preprocessed/Task100_grid/nnUNetData_plans_v2.1_stage0/all')
+
+    if os.path.exists(os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_preprocessed/Task100_grid/splits_final.pkl')):
+        os.remove(os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_preprocessed/Task100_grid/splits_final.pkl'))
 
     imagesTr = './imagesTr/'
     labelsTr = './labelsTr/'
@@ -188,30 +207,46 @@ def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None, MODEL=None, LOWRES=Fa
     print('done')
     print('    ')
 
+    list_imagesTr = list_images_base_tr[:samp_tr]
+    list_labelsTr = list_labels_base_tr[:samp_tr]
+    list_imagesTs = list_images_base_tr[samp_tr:samp_tr+samp_ts]
+
+    pat_ids = []
+    for pat_id in list_imagesTr:
+        pat_ids.append(pat_id[-15:-7])
+
     # Remove all preexisting nifti files
     print('Removing possibly preexisting nifti files...')
 
     for files in glob(os.path.join(path_imagesTr, '*.gz')):
-        os.remove(files)
+        if (files[-20:-12] + '.nii.gz') not in list_imagesTr:
+            os.remove(files)
     for files in glob(os.path.join(path_labelsTr, '*.gz')):
-        os.remove(files)
-    for files in glob(os.path.join(path_imagesTs, '*.gz')):
-        os.remove(files)
+        if files[-15:] not in list_imagesTr:
+            os.remove(files)
+    for files in glob(os.path.join(path_preprocessed, '*.npz')):
+        if files[-12:-4] not in pat_ids:
+            os.remove(files)
+    for files in glob(os.path.join(path_preprocessed, '*.npy')):
+        if files[-12:-4] not in pat_ids:
+            os.remove(files)
+    for files in glob(os.path.join(path_preprocessed, '*.pkl')):
+        if files[-12:-4] not in pat_ids:
+            os.remove(files)
 
     print('done')
     print('    ')
 
     # Copy files to corresponding directories
     print('Copying new files...')
-    list_imagesTr = list_images_base_tr[:samp_tr]
-    list_labelsTr = list_labels_base_tr[:samp_tr]
-    list_imagesTs = list_images_base_tr[samp_tr:samp_tr+samp_ts]
     for image in list_imagesTr:
         shutil.copyfile(os.path.join(path_images_base, image), os.path.join(path_imagesTr, image[:8] + '_0000.nii.gz'))
     for label in list_labelsTr:
         shutil.copyfile(os.path.join(path_labels_base, label), os.path.join(path_labelsTr, label))
-    # for image in list_imagesTs:
-    #     shutil.copyfile(os.path.join(path_images_base, image), os.path.join(path_imagesTs, image))
+        shutil.copyfile(os.path.join(path_preprocessed_all, label[:8] + '.npz'), os.path.join(path_preprocessed, label[:8] + '.npz'))
+        shutil.copyfile(os.path.join(path_preprocessed_all, label[:8] + '.npy'), os.path.join(path_preprocessed, label[:8] + '.npy'))
+        shutil.copyfile(os.path.join(path_preprocessed_all, label[:8] + '.pkl'), os.path.join(path_preprocessed, label[:8] + '.pkl'))
+
 
     print('done')
     print('    ')
@@ -241,7 +276,7 @@ def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None, MODEL=None, LOWRES=Fa
         "release": "1.0 08/01/2020",
         "tensorImageSize": "3D",
         "lowres": LOWRES,
-        "trainer": TRAINER,
+        "trainer": trainer,
         "modality": {
             "0": "CT"
         },
@@ -285,7 +320,7 @@ def file_management(nnunet_dir, SEED=0, DATASET_SIZE=None, MODEL=None, LOWRES=Fa
     shutil.copyfile(nnunet_dir + '/nnUNet_base/nnUNet_raw_data/Task100_grid/dataset.json', nnunet_dir + '/nnUNet_base/nnUNet_preprocessed/Task100_grid/dataset.json')
 
     # Create new directory for the model
-    model_dir = os.path.join(nnunet_dir, 'models', 'Task100_' + MODEL, 'nnUNetTrainerV2__nnUNetPlansv2.1')
+    model_dir = os.path.join(nnunet_dir, 'models', 'Task100_' + MODEL, trainer + '__nnUNetPlansv2.1')
     maybe_mkdir_p(model_dir)
     shutil.copyfile(os.path.join(nnunet_dir, 'nnUNet_base/nnUNet_preprocessed/Task100_grid/dataset.json'), os.path.join(model_dir, 'dataset.json'))
 

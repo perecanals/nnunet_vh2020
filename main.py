@@ -53,7 +53,13 @@ parser.add_argument('-c', '--cont', type=bool, required=False, default=False,
 
 parser.add_argument('-trainer', '--trainer', type=str, required=False, default='default',
     help='choose a trainer class from those in nnunet.training.network.training. '
-         'Choose between ::initial_lr_1e3::. Not required.')
+         'Choose between ::initial_lr_1e3::, ::Adam::, ::initial_lr_1e3_Adam::, ::SGD_ReduceOnPlateau::, '
+         '::Loss_Jacc_CE:: or ::initial_lr_1e3_Loss_Jacc_CE::. Not required.')
+
+parser.add_argument('-tf', '--test_fold', type=int, required=False, 
+    help='number of fold directory that will be used for testing. If we do not input TEST_FOLD in ::TESTING:: mode, '
+         'we will be using fold 0 directory for testing: '
+         'os.path.join(os.path.abspath(''), nnUNet_base/nnUNet_training_output_dir/nnUNet/3d_lowres/Task100_grid/nnUNetTrainerV2__nnUNetPlansv2.1/fold_::TEST_FOLD::)')
 
 
 args = parser.parse_args()
@@ -69,11 +75,32 @@ LOW_RAM      = args.low_ram
 LOWRES       = args.lowres
 CONTINUE     = args.cont
 TRAINER      = args.trainer
+TEST_FOLD    = args.test_fold
 
-if LOWRES:
-    MODEL = MODEL + '_lowres'
+if MODE != 'PREPROCESSING':
+    if LOWRES:
+        MODEL = MODEL + '_lowres'
 
-MODEL = MODEL + f'_{TRAINER}_{SEED}'
+    MODEL = MODEL + f'_{TRAINER}_{SEED}'
+
+    if TRAINER == 'default':
+        trainer = 'nnUNetTrainerV2'
+    elif TRAINER == 'initial_lr_1e3':
+        trainer = 'nnUNetTrainerV2_initial_lr_1e3'
+    elif TRAINER == 'Adam':
+        trainer = 'nnUNetTrainerV2_Adam'
+    elif TRAINER == 'initial_lr_1e3_Adam':
+        trainer = 'nnUNetTrainerV2_initial_lr_1e3_Adam'
+    elif TRAINER == 'SGD_ReduceOnPlateau':
+        trainer = 'nnUNetTrainerV2_SGD_ReduceOnPlateau'
+    elif TRAINER == 'initial_lr_1e3_SGD_ReduceOnPlateau':
+        trainer = 'nnUNetTrainerV2_initial_lr_1e3_SGD_ReduceOnPlateau'
+    elif TRAINER == 'Loss_Jacc_CE':
+        trainer = 'nnUNetTrainerV2_Loss_Jacc_CE'
+    elif TRAINER == 'initial_lr_1e3_Loss_Jacc_CE':
+        trainer = 'nnUNetTrainerV2_initial_lr_1e3_Loss_Jacc_CE'
+    else:
+        NotImplementedError('Please choose one of the implemented trainers')
     
 ##############################################################################################
 #--------------------------------------------------------------------------------------------#    
@@ -106,11 +133,11 @@ elif MODE == 'TRAINING':
     if not SKIP_FM:
         print('Running file management')
         print('                       ')
-        file_management(nnunet_dir, SEED=SEED, DATASET_SIZE=DATASET_SIZE, MODEL=MODEL, LOWRES=LOWRES, TRAINER=TRAINER) 
+        file_management(nnunet_dir, SEED=SEED, DATASET_SIZE=DATASET_SIZE, MODEL=MODEL, LOWRES=LOWRES, trainer=trainer) 
 
     print('Running training')
     print('                ')
-    training(nnunet_dir, FOLDS=FOLDS, SKIP_FOLD=SKIP_FOLD, MODEL=MODEL, LOWRES=LOWRES, CONTINUE=CONTINUE, TRAINER=TRAINER)
+    training(nnunet_dir, FOLDS=FOLDS, SKIP_FOLD=SKIP_FOLD, MODEL=MODEL, LOWRES=LOWRES, CONTINUE=CONTINUE, trainer=trainer)
 
 elif MODE == 'TESTING' or MODE == 'EVALUATION' or MODE == 'INFERENCE' or MODE == 'TRAIN_TEST' or MODE == 'TRAIN_EVAL' or MODE == 'TEST_ALL' or MODE == 'EVAL_ALL':
 
@@ -124,7 +151,7 @@ elif MODE == 'TESTING' or MODE == 'EVALUATION' or MODE == 'INFERENCE' or MODE ==
     print('Running testing on model', MODEL_DIR)
     print('Mode:', MODE                        )
     print('                                   ')
-    testing(nnunet_dir, MODEL_DIR=MODEL_DIR, MODE=MODE, LOW_RAM=LOW_RAM, MODEL=MODEL, LOWRES=LOWRES, TRAINER=TRAINER)
+    testing(nnunet_dir, MODEL_DIR=MODEL_DIR, MODE=MODE, LOW_RAM=LOW_RAM, MODEL=MODEL, LOWRES=LOWRES, trainer=trainer, CONTINUE=CONTINUE, TEST_FOLD=TEST_FOLD)
 
 else:
     ValueError('Please introduce one of the possible modes. See main.py -h for more information.')

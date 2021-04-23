@@ -11,6 +11,8 @@ from batchgenerators.utilities.file_and_folder_operations import maybe_mkdir_p
 from preprocessing import preprocessing
 from training import training, file_management
 from testing import testing
+from inference_single import inference_single
+from ensemble import ensemble_single
 
 ####################################### Arguments ############################################
 
@@ -37,6 +39,9 @@ parser.add_argument('-sk', '--skip_fold', type=int, required=False, default=0,
     help='it skips folds below number specified. E.g. if --skip_fold is set to ::1::, it will '
          'skip the first fold (fold 0). Not required.')
 
+parser.add_argument('-dc', '--dataset_config', type=int, required=False, default=1,
+    help='choose between a fixed testing set (0) or a varying testing set across folds (1).')
+
 parser.add_argument('-sk_fm', '--skip_file_management', type=bool, required=False, default=False, 
     help='skips file management for ::TRAINING:: mode. Use in case you are sure files in imagesTr/labelsTr/imagesTs '
          'are the ones desired (e.g. working with several folds in colab). Not required.')
@@ -61,21 +66,30 @@ parser.add_argument('-tf', '--test_fold', type=int, required=False,
          'we will be using fold 0 directory for testing: '
          'os.path.join(os.path.abspath(''), nnUNet_base/nnUNet_training_output_dir/nnUNet/3d_lowres/Task100_grid/nnUNetTrainerV2__nnUNetPlansv2.1/fold_::TEST_FOLD::)')
 
+parser.add_argument('-input_dir', '--input_dir', type=str, required=False,
+    help='path to directory of input image in ::INFERENCE:: mode. Required in ::INFERENCE:: mode.')
+
+parser.add_argument('-input', '--input', type=str, required=False,
+    help='identifier of input image (nifty) in ::INFERENCE:: mode. Required in ::INFERENCE:: mode.')
+
 
 args = parser.parse_args()
 
-MODE         = args.mode
-MODEL        = args.model
-SEED         = args.seed
-DATASET_SIZE = args.dataset_size
-FOLDS        = args.folds
-SKIP_FOLD    = args.skip_fold
-SKIP_FM      = args.skip_file_management
-LOW_RAM      = args.low_ram
-LOWRES       = args.lowres
-CONTINUE     = args.cont
-TRAINER      = args.trainer
-TEST_FOLD    = args.test_fold
+MODE           = args.mode
+MODEL          = args.model
+SEED           = args.seed
+DATASET_SIZE   = args.dataset_size
+FOLDS          = args.folds
+SKIP_FOLD      = args.skip_fold
+DATASET_CONFIG = args.dataset_config
+SKIP_FM        = args.skip_file_management
+LOW_RAM        = args.low_ram
+LOWRES         = args.lowres
+CONTINUE       = args.cont
+TRAINER        = args.trainer
+TEST_FOLD      = args.test_fold
+INPUT_DIR      = args.input_dir
+INPUT          = args.input
 
 if MODE != 'PREPROCESSING':
     if LOWRES:
@@ -133,14 +147,13 @@ elif MODE == 'TRAINING':
     if not SKIP_FM:
         print('Running file management')
         print('                       ')
-        file_management(nnunet_dir, SEED=SEED, DATASET_SIZE=DATASET_SIZE, MODEL=MODEL, LOWRES=LOWRES, trainer=trainer) 
+        file_management(nnunet_dir, SEED=SEED, DATASET_SIZE=DATASET_SIZE, MODEL=MODEL, LOWRES=LOWRES, trainer=trainer, DATASET_CONFIG=DATASET_CONFIG) 
 
     print('Running training')
     print('                ')
-    training(nnunet_dir, FOLDS=FOLDS, SKIP_FOLD=SKIP_FOLD, MODEL=MODEL, LOWRES=LOWRES, CONTINUE=CONTINUE, trainer=trainer)
+    training(nnunet_dir, FOLDS=FOLDS, SKIP_FOLD=SKIP_FOLD, MODEL=MODEL, LOWRES=LOWRES, CONTINUE=CONTINUE, trainer=trainer, DATASET_CONFIG=DATASET_CONFIG)
 
-elif MODE == 'TESTING' or MODE == 'EVALUATION' or MODE == 'INFERENCE' or MODE == 'TRAIN_TEST' or MODE == 'TRAIN_EVAL' or MODE == 'TEST_ALL' or MODE == 'EVAL_ALL':
-
+elif MODE == 'TEST' or MODE == 'EVALUATION' or MODE == 'TRAIN_TEST' or MODE == 'TRAIN_EVAL' or MODE == 'TEST_ALL' or MODE == 'EVAL_ALL':
     if TRAINER == 'default':
         trainer = 'nnUNetTrainerV2'
     elif TRAINER == 'initial_lr_1e3':
@@ -151,7 +164,17 @@ elif MODE == 'TESTING' or MODE == 'EVALUATION' or MODE == 'INFERENCE' or MODE ==
     print('Running testing on model', MODEL_DIR)
     print('Mode:', MODE                        )
     print('                                   ')
-    testing(nnunet_dir, MODEL_DIR=MODEL_DIR, MODE=MODE, LOW_RAM=LOW_RAM, MODEL=MODEL, LOWRES=LOWRES, trainer=trainer, CONTINUE=CONTINUE, TEST_FOLD=TEST_FOLD)
+    testing(nnunet_dir, MODEL_DIR=MODEL_DIR, MODE=MODE, LOW_RAM=LOW_RAM, MODEL=MODEL, LOWRES=LOWRES, trainer=trainer, CONTINUE=CONTINUE, TEST_FOLD=TEST_FOLD, DATASET_CONFIG=DATASET_CONFIG)
+
+elif MODE == 'INFERENCE':
+    MODEL_DIR = os.path.join(nnunet_dir, 'models', 'Task100_' + MODEL, trainer + '__nnUNetPlansv2.1', f'fold_{FOLDS}')
+
+    inference_single(nnunet_dir, INPUT_DIR, INPUT, MODEL_DIR=MODEL_DIR, MODEL=MODEL, LOWRES=LOWRES, TEST_FOLD=TEST_FOLD)
+
+elif MODE == 'ENSEMBLE':
+    MODEL_DIR = os.path.join(nnunet_dir, 'models', 'Task100_' + MODEL, trainer + '__nnUNetPlansv2.1')
+
+    ensemble_single(nnunet_dir, INPUT_DIR, INPUT, MODEL_DIR=MODEL_DIR, MODEL=MODEL, LOWRES=LOWRES)
 
 else:
     ValueError('Please introduce one of the possible modes. See main.py -h for more information.')

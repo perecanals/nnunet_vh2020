@@ -82,10 +82,15 @@ for fold in range(FOLDS):
         print('Transferring data from fold_', fold)
         print('                                  ')
 
-        for files in os.listdir(os.path.join(nnunet_model_dir, f'fold_{fold}')):
-            if not os.path.isdir(os.path.join(nnunet_model_dir, f'fold_{fold}', files)):
+        if SKIP_FOLD > 2: 
+            fold_aux = fold - 3
+        else:
+            fold_aux = fold
+
+        for files in os.listdir(os.path.join(nnunet_model_dir, f'fold_{fold_aux}')):
+            if not os.path.isdir(os.path.join(nnunet_model_dir, f'fold_{fold_aux}', files)):
                 print(f'Transferring file {files}...')
-                shutil.copyfile(os.path.join(nnunet_model_dir, f'fold_{fold}', files), os.path.join(models_dir, f'fold_{fold}', files))
+                shutil.copyfile(os.path.join(nnunet_model_dir, f'fold_{fold_aux}', files), os.path.join(models_dir, f'fold_{fold}', files))
                 print('done')
 
         print(f'Fold {fold} done')

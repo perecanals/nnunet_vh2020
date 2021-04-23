@@ -10,7 +10,7 @@ from evaluation_metrics import eval_metrics
 
 from time import time
 
-def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None, MODEL=None, LOWRES=False, trainer='nnUNetTrainerV2', CONTINUE=False, TEST_FOLD = 0):
+def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None, MODEL=None, LOWRES=False, trainer='nnUNetTrainerV2', CONTINUE=False, TEST_FOLD=0, DATASET_CONFIG=1):
     ''' ################################ Testing #############################################
 
     Testing of the nnunet trained models. All images and labels in the 
@@ -46,7 +46,7 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None, MODEL=None, LOW
 
     testing_done = False
 
-    if MODE == 'TESTING' or MODE == 'INFERENCE' or MODE == 'TRAIN_TEST' or MODE == 'TEST_ALL':
+    if MODE == 'TEST' or MODE == 'TRAIN_TEST' or MODE == 'TEST_ALL':
 
         ################################## Testing ###########################################
 
@@ -57,11 +57,9 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None, MODEL=None, LOW
         maybe_mkdir_p(os.path.join(nnunet_dir, 'inference_test'))
 
         path_imagesTest = os.path.join(nnunet_dir, 'inference_test/input'                                   )
-        path_labelsTest = os.path.join(nnunet_dir, 'inference_test/labels'                                  )
         path_outputTest = os.path.join(nnunet_dir, 'inference_test/output_' + trainer + '_' + MODEL_DIR[-6:])
 
         maybe_mkdir_p(path_imagesTest)
-        maybe_mkdir_p(path_labelsTest)
         maybe_mkdir_p(path_outputTest)
 
         model = os.path.join(MODEL_DIR, 'model_best.model')
@@ -75,6 +73,8 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None, MODEL=None, LOW
 
         maybe_mkdir_p(path_models)
 
+        shutil.copyfile(model, os.path.join(path_models, 'model_final_checkpoint.model'))
+        shutil.copyfile(pkl,   os.path.join(path_models, 'model_final_checkpoint.model.pkl'))
         shutil.copyfile(plans, os.path.join(path_models[:-len(fold)], 'plans.pkl'))
 
         test_dir = os.path.join(MODEL_DIR, 'test')
@@ -92,9 +92,6 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None, MODEL=None, LOW
         # Copy selected model to nnunet output dir
         print('Copying selected model to nnUNet output dir for inference...')
 
-        shutil.copyfile(model, os.path.join(path_models, 'model_final_checkpoint.model'))
-        shutil.copyfile(pkl,   os.path.join(path_models, 'model_final_checkpoint.model.pkl'))
-
         print('done')
         print('    ')
 
@@ -107,28 +104,39 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None, MODEL=None, LOW
         # Extract test images and labels from dataset.json
         print('Extracting test images and labels...')
         list_imagesTest = []; list_labelsTest = []
-        if MODE != 'TEST_ALL':
-            print(os.path.join(MODEL_DIR[:-6], 'dataset.json'))
-            with open(os.path.join(MODEL_DIR[:-6], 'dataset.json')) as json_file:
-                data = json.load(json_file)
-                if MODE == 'TRAIN_TEST':
+        print(os.path.join(MODEL_DIR[:-6], 'dataset.json'))
+        with open(os.path.join(MODEL_DIR[:-6], 'dataset.json')) as json_file:
+            data = json.load(json_file)
+            if MODE == 'TRAIN_TEST':
+                if DATASET_CONFIG == 0:
                     for image in data['training']:
                         list_imagesTest.append(image['image'][-15:])
                         list_labelsTest.append(image['image'][-15:])
-                else:
+                elif DATASET_CONFIG == 1:
+                    for image in data[f'fold {TEST_FOLD}']['training']:
+                        list_imagesTest.append(image['image'][-15:])
+                        list_labelsTest.append(image['image'][-15:])
+            elif MODE == 'TEST':
+                if DATASET_CONFIG == 0:
                     for image in data['test']:
                         list_imagesTest.append(image['image'][-15:])
                         list_labelsTest.append(image['image'][-15:])
-        else:
-            train_list = []
-            with open(os.path.join(MODEL_DIR[:-6], 'dataset.json')) as json_file:
-                data = json.load(json_file)
-                for image in data['training']:
-                    train_list.append(image['image'][-15:])
-            for image in os.listdir(path_images_base):
-                if image not in train_list and image.endswith('.nii.gz'):
-                    list_imagesTest.append(image)
-                    list_labelsTest.append(image)
+                elif DATASET_CONFIG == 1:
+                    for image in data[f'fold {TEST_FOLD}']['test']:
+                        list_imagesTest.append(image['image'][-15:])
+                        list_labelsTest.append(image['image'][-15:])
+            elif MODE == 'TEST_ALL':
+                train_list = []
+                if DATASET_CONFIG == 0:
+                    for image in data['training']:
+                        train_list.append(image['image'][-15:])
+                if DATASET_CONFIG == 1:
+                    for image in data[f'fold {TEST_FOLD}']['training']:
+                        train_list.append(image['image'][-15:])                
+                for image in os.listdir(path_images_base):
+                    if image not in train_list and image.endswith('.nii.gz'):
+                        list_imagesTest.append(image)
+                        list_labelsTest.append(image)
 
         list_imagesTest = sorted(list_imagesTest)
         list_labelsTest = sorted(list_labelsTest)
@@ -150,21 +158,10 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None, MODEL=None, LOW
                 print(len(list_imagesTest), 'images to go'       )
                 print('                                         ')
 
-        # Remove preexisting nifti files in testing dirs
-        for files in glob(os.path.join(path_imagesTest, '*.gz')):
-            if (files[-20:-12] + '.nii.gz') not in list_imagesTest:
-                os.remove(files)
-        for files in glob(os.path.join(path_labelsTest, '*.gz')):
-            if files not in list_labelsTest:
-                os.remove(files)
-
         # Copy testing images and labels to testing dirs
         for image in list_imagesTest:
             if image.endswith('.nii.gz') and f'{image[-15:-7]}_0000.nii.gz' not in os.listdir(path_imagesTest):
                 shutil.copyfile(os.path.join(path_images_base, image[-15:]), os.path.join(path_imagesTest, f'{image[-15:-7]}_0000.nii.gz'))
-        for label in list_labelsTest:
-            if label.endswith('.nii.gz') and label not in os.listdir(path_labelsTest):
-                shutil.copyfile(os.path.join(path_labels_base, label[-15:]), os.path.join(path_labelsTest, label[-15:]))
 
         print('done')
         print('    ')
@@ -199,7 +196,7 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None, MODEL=None, LOW
 
                     print(f'Inference over {image} finished')
                     print('                                ')
-        elif not testing_done:
+        elif not testing_done and not LOW_RAM:
             if path_imagesTest[:8] == '/content': # We are working on drive, we need to get rid of spaces in the path
                 path_imagesTest = path_imagesTest[:17] + '\ ' + path_imagesTest[18:]
                 path_outputTest = path_outputTest[:17] + '\ ' + path_outputTest[18:]
@@ -220,11 +217,9 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None, MODEL=None, LOW
         # Move all inferred images and labels to test dir
         print('Moving all labels and predictions to:')
         print(test_dir                               )
-        path_labelsTest = os.path.join(nnunet_dir, 'inference_test/labels'                                  )
         path_outputTest = os.path.join(nnunet_dir, 'inference_test/output_' + trainer + '_' + MODEL_DIR[-6:])
-        for label in os.listdir(path_labelsTest):  
-            if label.endswith('nii.gz'):
-                shutil.copyfile(os.path.join(path_labelsTest, label), os.path.join(test_dir_labels, label))
+        for label in list_labelsTest:
+            shutil.copyfile(os.path.join(path_labels_base, label[-15:]), os.path.join(test_dir_labels, label[-15:]))
         for pred  in os.listdir(path_outputTest):
             if pred.endswith('nii.gz'):
                 os.rename(os.path.join(path_outputTest, pred),  os.path.join(test_dir_preds,  pred ))
@@ -232,7 +227,7 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None, MODEL=None, LOW
         print('done')
         print('    ')
 
-    if MODE == 'TESTING' or MODE == 'EVALUATION' or MODE == 'TRAIN_TEST' or MODE == 'TRAIN_EVAL' or MODE == 'TEST_ALL' or MODE == 'EVAL_ALL':
+    if MODE == 'TEST' or MODE == 'EVALUATION' or MODE == 'TRAIN_TEST' or MODE == 'TRAIN_EVAL' or MODE == 'TEST_ALL' or MODE == 'EVAL_ALL':
 
         ################################ Evaluation ##########################################
 

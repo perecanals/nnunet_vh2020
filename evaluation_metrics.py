@@ -114,11 +114,11 @@ def eval_metrics(MODEL_DIR, MODE=None, CONTINUE=False):
         jacc_idx = jc(pred, label)
         # prec_idx = precision(pred, label)
         reca_idx = recall(pred, label)
-        ravd_idx = ravd(pred, label)
+        ravd_idx = np.abs(ravd(pred, label))
         # haud_idx = hd(pred, label, voxelspacing=voxel_spacing, connectivity=1)
         # haud95_idx = hd95(pred, label, voxelspacing=voxel_spacing, connectivity=1)
         assdi_idx, asdi_idx = assd_asd(pred, label, voxelspacing=voxel_spacing, connectivity=1)
-        volc_idx = np.abs(volume_correlation(pred, label)[0])
+        volc_idx = volume_correlation(pred, label)[0]
         volcc_idx = volume_change_correlation(pred, label)[0]
 
         dice[idx] = dice_idx

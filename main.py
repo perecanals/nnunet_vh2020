@@ -20,7 +20,8 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('-m', '--mode', type=str, required=True, 
     help='choose from the following options: ::PREPROCESSING::, ::TRAINING::, '
-     '::TESTING::, ::EVALUATION:: or ::INFERENCE::. Required.')
+     '::TEST::, ::TRAIN_TEST::, ::EVAL::, ::TRAIN_EVAL::, ::ENSEMBLE_TEST::, ::ENSEMBLE_EVAL::, ::ENSEMBLE_TRAIN_TEST::, '
+     '::ENSEMBLE_TRAIN_EVAL::, ::INFERENCE:: or ::ENSEMBLE::. Required.')
 
 parser.add_argument('-model', '--model', type=str, required=True, 
     help='Please input a model name. Required.')
@@ -46,8 +47,8 @@ parser.add_argument('-sk_fm', '--skip_file_management', type=bool, required=Fals
     help='skips file management for ::TRAINING:: mode. Use in case you are sure files in imagesTr/labelsTr/imagesTs '
          'are the ones desired (e.g. working with several folds in colab). Not required.')
 
-parser.add_argument('-ram', '--low_ram', type=str, required=False, 
-    help='use in case of low RAM memory for ::TESTING::. It will inference one image at the time. Input '
+parser.add_argument('-ram', '--low_ram', type=bool, required=False, default=False,
+    help='use in case of low RAM memory for ::TEST::. It will inference one image at the time. Input '
          '::y::. Not required')
 
 parser.add_argument('-lowres', '--lowres', type=bool, required=False, default=False,
@@ -153,27 +154,40 @@ elif MODE == 'TRAINING':
     print('                ')
     training(nnunet_dir, FOLDS=FOLDS, SKIP_FOLD=SKIP_FOLD, MODEL=MODEL, LOWRES=LOWRES, CONTINUE=CONTINUE, trainer=trainer, DATASET_CONFIG=DATASET_CONFIG)
 
-elif MODE == 'TEST' or MODE == 'EVALUATION' or MODE == 'TRAIN_TEST' or MODE == 'TRAIN_EVAL' or MODE == 'TEST_ALL' or MODE == 'EVAL_ALL':
+elif MODE in ['TEST', 'EVAL', 'TRAIN_TEST', 'TRAIN_EVAL', 'ENSEMBLE_TEST', 'ENSMEBLE_EVAL', 'ENSEMBLE_TRAIN_TEST', 'ENSEMBLE_TRAIN_EVAL']:
     if TRAINER == 'default':
         trainer = 'nnUNetTrainerV2'
     elif TRAINER == 'initial_lr_1e3':
         trainer = 'nnUNetTrainerV2_initial_lr_1e3'
 
-    MODEL_DIR = os.path.join(nnunet_dir, 'models', 'Task100_' + MODEL, trainer + '__nnUNetPlansv2.1', f'fold_{FOLDS}')
+    # Ensembling can only be used in models trained with a fixed testing set across folds
+    if MODE in ['ENSEMBLE_TEST', 'ENSMEBLE_EVAL', 'ENSEMBLE_TRAIN_TEST', 'ENSEMBLE_TRAIN_EVAL']:
+        MODEL_DIR = os.path.join(nnunet_dir, 'models', 'Task100_' + MODEL, trainer + '__nnUNetPlansv2.1')
+        with open(os.path.join(MODEL_DIR, 'dataset.json')) as json_file:
+            data = json.load(json_file)
+        assert data['dataset config'] == 0
+    else:
+        MODEL_DIR = os.path.join(nnunet_dir, 'models', 'Task100_' + MODEL, trainer + '__nnUNetPlansv2.1', f'fold_{FOLDS}')
 
     print('Running testing on model', MODEL_DIR)
     print('Mode:', MODE                        )
     print('                                   ')
-    testing(nnunet_dir, MODEL_DIR=MODEL_DIR, MODE=MODE, LOW_RAM=LOW_RAM, MODEL=MODEL, LOWRES=LOWRES, trainer=trainer, CONTINUE=CONTINUE, TEST_FOLD=TEST_FOLD, DATASET_CONFIG=DATASET_CONFIG)
+    testing(nnunet_dir, MODEL_DIR=MODEL_DIR, MODE=MODE, LOW_RAM=LOW_RAM, MODEL=MODEL, FOLD=FOLDS, LOWRES=LOWRES, trainer=trainer, CONTINUE=CONTINUE, TEST_FOLD=TEST_FOLD, DATASET_CONFIG=DATASET_CONFIG)
 
 elif MODE == 'INFERENCE':
     MODEL_DIR = os.path.join(nnunet_dir, 'models', 'Task100_' + MODEL, trainer + '__nnUNetPlansv2.1', f'fold_{FOLDS}')
 
+    print('Performing inference on image', INPUT)
+    print('Model:', MODEL_DIR                   )
+    print('                                    ')
     inference_single(nnunet_dir, INPUT_DIR, INPUT, MODEL_DIR=MODEL_DIR, MODEL=MODEL, LOWRES=LOWRES, TEST_FOLD=TEST_FOLD)
 
 elif MODE == 'ENSEMBLE':
     MODEL_DIR = os.path.join(nnunet_dir, 'models', 'Task100_' + MODEL, trainer + '__nnUNetPlansv2.1')
 
+    print('Performing inference (ensembling) on image', INPUT)
+    print('Model:', MODEL_DIR                                )
+    print('                                                 ')
     ensemble_single(nnunet_dir, INPUT_DIR, INPUT, MODEL_DIR=MODEL_DIR, MODEL=MODEL, LOWRES=LOWRES)
 
 else:

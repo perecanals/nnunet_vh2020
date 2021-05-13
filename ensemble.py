@@ -12,9 +12,6 @@ from time import time
 
 def ensemble_single(nnunet_dir, INPUT_DIR, INPUT, MODEL_DIR=None, MODEL=None, LOWRES=True):
 
-    # INPUT_DIR = "TFM/nnunet_env/nnUNet/nnunet/inference_test/input"
-    # INPUT = "15308585.nii.gz"
-
     if MODEL_DIR is None: ValueError('Please input path to model. See main.py -h for more information.')
 
     pat_id = INPUT[:-7]
@@ -56,24 +53,27 @@ def ensemble_single(nnunet_dir, INPUT_DIR, INPUT, MODEL_DIR=None, MODEL=None, LO
         shutil.copyfile(pkl,   os.path.join(path_models, 'model_final_checkpoint.model.pkl'))
         shutil.copyfile(plans, os.path.join(path_models[:-7], 'plans.pkl'))
 
-        # if input_path[:8] == '/content': # We are working on drive, we need to get rid of spaces in the path
-        #     input_path_aux = input_path[:17] + '\ ' + input_path[18:]
-        #     output_path_aux = output_path[:17] + '\ ' + output_path[18:]
+        if input_path[:8] == '/content': # We are working on drive, we need to get rid of spaces in the path
+            input_path_aux = input_path[:17] + '\ ' + input_path[18:]
+            output_path_aux = output_path[:17] + '\ ' + output_path[18:]
 
         if LOWRES:
-            os.system('nnUNet_predict -i ' + input_path + ' -o ' + output_path + ' -t Task100_grid -z -m 3d_lowres -f ' + str(fold))
+            os.system('nnUNet_predict -i ' + input_path_aux + ' -o ' + output_path_aux + ' -t Task100_grid -z -m 3d_lowres -f ' + str(fold))
         else:
-            os.system('nnUNet_predict -i ' + input_path + ' -o ' + output_path + ' -t Task100_grid -z store_true -m 3d_fullres -f ' + str(fold))
+            os.system('nnUNet_predict -i ' + input_path_aux + ' -o ' + output_path_aux + ' -t Task100_grid -z store_true -m 3d_fullres -f ' + str(fold))
 
-        npz_folders.append(output_path)
+        npz_folders.append(output_path_aux)
 
         print(f'Fold {fold} completed')
         print('                      ')
 
     output_folder = os.path.join(INPUT_DIR, pat_id, 'output')
+    maybe_mkdir_p(output_folder)
 
     if input_path[:8] == '/content':
         output_folder = output_folder[:17] + '\ ' + output_folder[18:]
+
+    print(npz_folders, output_folder)
 
     print('Starting ensembling')
 

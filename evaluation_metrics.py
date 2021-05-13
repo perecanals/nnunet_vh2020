@@ -29,17 +29,22 @@ def eval_metrics(MODEL_DIR, MODE=None, CONTINUE=False):
         
     '''
 
-    if MODE == 'TESTING' or MODE == 'EVALUATION':
+    if MODE == 'TEST' or MODE == 'EVAL':
         mode = 'test'
     elif MODE == 'TRAIN_TEST' or MODE == 'TRAIN_EVAL':
         mode = 'train'
-    elif MODE == 'TEST_ALL' or 'EVAL_ALL':
-        mode = 'test_all'
+    elif MODE == 'ENSAMBLE_TEST' or MODE == 'ENSAMBLE_EVAL':
+        mode = 'test_ensemble'
+    elif MODE == 'ENSAMBLE_TRAIN_TEST' or MODE == 'ENSAMBLE_TRAIN_EVAL':
+        mode = 'train_ensemble'
 
     start = time()
 
     # Paths
-    test_dir = os.path.join(MODEL_DIR, 'test')
+    if MODE == 'TEST' or MODE == 'EVAL' or MODE == 'TRAIN_TEST' or MODE == 'TRAIN_EVAL':
+        test_dir = os.path.join(MODEL_DIR, 'test')
+    elif MODE == 'ENSMEBLE_TEST' or MODE == 'ENSMEBLE_EVAL' or MODE == 'ENSMEBLE_TRAIN_TEST' or MODE == 'ENSMEBLE_TRAIN_EVAL':
+        test_dir = os.path.join(MODEL_DIR, 'test_ensemble')
 
     progress_dir = os.path.join(test_dir, 'progress', mode)
     maybe_mkdir_p(progress_dir)
@@ -47,9 +52,15 @@ def eval_metrics(MODEL_DIR, MODE=None, CONTINUE=False):
     if MODE == 'TRAIN_TEST' or MODE == 'TRAIN_EVAL':
         test_dir_labels = os.path.join(test_dir, 'data_training', 'labels')
         test_dir_preds  = os.path.join(test_dir, 'data_training', 'preds' )
-    else:
+    elif MODE == 'ENSEMBLE_TRAIN_TEST' or MODE == 'ENSEMBLE_TRAIN_EVAL':    
+        test_dir_labels = os.path.join(test_dir, 'data_training', 'labels')
+        test_dir_preds  = os.path.join(test_dir, 'data_training', 'preds_ensemble')
+    elif MODE == 'TEST' or MODE == 'EVAL':
         test_dir_labels = os.path.join(test_dir, 'data', 'labels')
         test_dir_preds  = os.path.join(test_dir, 'data', 'preds' )
+    elif MODE == 'ENSEMBLE_TEST' or MODE == 'ENSEMBLE_EVAL':    
+        test_dir_labels = os.path.join(test_dir, 'data', 'labels')
+        test_dir_preds  = os.path.join(test_dir, 'data', 'preds_ensemble')
 
     # Retrieve labels and predictions from data dir
     print('Reading data...')
@@ -80,7 +91,7 @@ def eval_metrics(MODEL_DIR, MODE=None, CONTINUE=False):
     
     n = 0
 
-    if CONTINUE and MODE in ['EVAL_ALL', 'EVALUATION', 'TRAIN_EVAL']:
+    if CONTINUE and MODE in ['EVAL', 'TRAIN_EVAL', 'ENSMEBLE_EVAL', 'ENSEMBLE_TRAIN_EVAL']:
         dice_continue = np.asarray(np.loadtxt(os.path.join(progress_dir, 'dice.out'))) # Changed (precision -> dice)
         # hausdorff95_continue = np.asarray(np.loadtxt(os.path.join(progress_dir, 'hausdorff95.out'))) # Changed (hausdorff -> hausdorff95)
         for idx, _ in enumerate(dice_continue):

@@ -7,10 +7,11 @@ import json
 from batchgenerators.utilities.file_and_folder_operations import maybe_mkdir_p
 
 from evaluation_metrics import eval_metrics
+from ensemble import ensemble_single
 
 from time import time
 
-def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None, MODEL=None, LOWRES=False, trainer='nnUNetTrainerV2', CONTINUE=False, TEST_FOLD=0, DATASET_CONFIG=1):
+def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=False, MODEL=None, FOLD=None, LOWRES=False, trainer='nnUNetTrainerV2', CONTINUE=False, TEST_FOLD=0, DATASET_CONFIG=1):
     ''' ################################ Testing #############################################
 
     Testing of the nnunet trained models. All images and labels in the 
@@ -36,6 +37,7 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None, MODEL=None, LOW
     '''
 
     if MODEL_DIR is None: ValueError('Please input path to model. See main.py -h for more information.')
+    if FOLD is None: ValueError('Please input fold. See main.py -h for more information.')
 
     if TEST_FOLD not in [0, 1, 2, 3, 4]:
         TEST_FOLD = 'all'
@@ -46,7 +48,7 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None, MODEL=None, LOW
 
     testing_done = False
 
-    if MODE == 'TEST' or MODE == 'TRAIN_TEST' or MODE == 'TEST_ALL':
+    if MODE == 'TEST' or MODE == 'TRAIN_TEST' or MODE == 'ENSEMBLE_TEST' or MODE  == 'ENSEMBLE_TRAIN_TEST':
 
         ################################## Testing ###########################################
 
@@ -62,30 +64,42 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None, MODEL=None, LOW
         maybe_mkdir_p(path_imagesTest)
         maybe_mkdir_p(path_outputTest)
 
-        model = os.path.join(MODEL_DIR, 'model_best.model')
-        pkl   = os.path.join(MODEL_DIR, 'model_best.model.pkl')
-        plans = os.path.join(MODEL_DIR[:-7], 'plans.pkl')
+        if MODE == 'TEST' or MODE == 'EVAL' or MODE == 'TRAIN_TEST' or MODE == 'TRAIN_EVAL':
+            model = os.path.join(MODEL_DIR, 'model_best.model')
+            pkl   = os.path.join(MODEL_DIR, 'model_best.model.pkl')
+            plans = os.path.join(MODEL_DIR[:-7], 'plans.pkl')
 
-        if LOWRES:
-            path_models = os.path.join(nnunet_dir, f'nnUNet_base/nnUNet_training_output_dir/nnUNet/3d_lowres/Task100_grid/nnUNetTrainerV2__nnUNetPlansv2.1/{fold}')
-        else:
-            path_models = os.path.join(nnunet_dir, f'nnUNet_base/nnUNet_training_output_dir/nnUNet/3d_fullres/Task100_grid/nnUNetTrainerV2__nnUNetPlansv2.1/{fold}')
+            if LOWRES:
+                path_models = os.path.join(nnunet_dir, f'nnUNet_base/nnUNet_training_output_dir/nnUNet/3d_lowres/Task100_grid/nnUNetTrainerV2__nnUNetPlansv2.1/{fold}')
+            else:
+                path_models = os.path.join(nnunet_dir, f'nnUNet_base/nnUNet_training_output_dir/nnUNet/3d_fullres/Task100_grid/nnUNetTrainerV2__nnUNetPlansv2.1/{fold}')
 
-        maybe_mkdir_p(path_models)
+            maybe_mkdir_p(path_models)
 
-        shutil.copyfile(model, os.path.join(path_models, 'model_final_checkpoint.model'))
-        shutil.copyfile(pkl,   os.path.join(path_models, 'model_final_checkpoint.model.pkl'))
-        shutil.copyfile(plans, os.path.join(path_models[:-len(fold)], 'plans.pkl'))
+            shutil.copyfile(model, os.path.join(path_models, 'model_final_checkpoint.model'))
+            shutil.copyfile(pkl,   os.path.join(path_models, 'model_final_checkpoint.model.pkl'))
+            shutil.copyfile(plans, os.path.join(path_models[:-len(fold)], 'plans.pkl'))
 
-        test_dir = os.path.join(MODEL_DIR, 'test')
-        maybe_mkdir_p(test_dir)
+            test_dir = os.path.join(MODEL_DIR, 'test')
+            maybe_mkdir_p(test_dir)
 
-        if MODE == 'TRAIN_TEST':
+        elif MODE == 'ENSMEBLE_TEST' or MODE == 'ENSMEBLE_EVAL' or MODE == 'ENSMEBLE_TRAIN_TEST' or MODE == 'ENSMEBLE_TRAIN_EVAL':
+            test_dir = os.path.join(MODEL_DIR, 'test_ensemble')
+            maybe_mkdir_p(test_dir)
+        
+        if MODE == 'TRAIN_TEST' or MODE == 'TRAIN_EVAL':
             test_dir_labels = os.path.join(test_dir, 'data_training', 'labels')
             test_dir_preds  = os.path.join(test_dir, 'data_training', 'preds' )
-        else:
+        elif MODE == 'ENSEMBLE_TRAIN_TEST' or MODE == 'ENSEMBLE_TRAIN_EVAL':    
+            test_dir_labels = os.path.join(test_dir, 'data_training', 'labels')
+            test_dir_preds  = os.path.join(test_dir, 'data_training', 'preds_ensemble')
+        elif MODE == 'TEST' or MODE == 'EVAL':
             test_dir_labels = os.path.join(test_dir, 'data', 'labels')
             test_dir_preds  = os.path.join(test_dir, 'data', 'preds' )
+        elif MODE == 'ENSEMBLE_TEST' or MODE == 'ENSEMBLE_EVAL':    
+            test_dir_labels = os.path.join(test_dir, 'data', 'labels')
+            test_dir_preds  = os.path.join(test_dir, 'data', 'preds_ensemble')
+
         maybe_mkdir_p(test_dir_labels)
         maybe_mkdir_p(test_dir_preds)
 
@@ -95,7 +109,7 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None, MODEL=None, LOW
         print('done')
         print('    ')
 
-        if LOW_RAM is not None: 
+        if LOW_RAM: 
             print('Using LOW_RAM option (See main.py -h for more information)')
             print('                                                          ')
             path_lowram = os.path.join(path_imagesTest, 'low_ram_' + trainer + '_' + MODEL_DIR[-6:])
@@ -107,36 +121,24 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None, MODEL=None, LOW
         print(os.path.join(MODEL_DIR[:-6], 'dataset.json'))
         with open(os.path.join(MODEL_DIR[:-6], 'dataset.json')) as json_file:
             data = json.load(json_file)
-            if MODE == 'TRAIN_TEST':
+            if MODE == 'TRAIN_TEST' or MODE == 'ENSEMBLE_TRAIN_TEST':
                 if DATASET_CONFIG == 0:
-                    for image in data['training']:
+                    for image in data[f'fold {FOLD}']['training']:
                         list_imagesTest.append(image['image'][-15:])
                         list_labelsTest.append(image['image'][-15:])
                 elif DATASET_CONFIG == 1:
-                    for image in data[f'fold {TEST_FOLD}']['training']:
+                    for image in data[f'fold {FOLD}']['training']:
                         list_imagesTest.append(image['image'][-15:])
                         list_labelsTest.append(image['image'][-15:])
-            elif MODE == 'TEST':
+            elif MODE == 'TEST' or MODE == 'ENSEMBLE_TEST':
                 if DATASET_CONFIG == 0:
-                    for image in data['test']:
+                    for image in data[f'fold {FOLD}']['test']:
                         list_imagesTest.append(image['image'][-15:])
                         list_labelsTest.append(image['image'][-15:])
                 elif DATASET_CONFIG == 1:
-                    for image in data[f'fold {TEST_FOLD}']['test']:
+                    for image in data[f'fold {FOLD}']['test']:
                         list_imagesTest.append(image['image'][-15:])
                         list_labelsTest.append(image['image'][-15:])
-            elif MODE == 'TEST_ALL':
-                train_list = []
-                if DATASET_CONFIG == 0:
-                    for image in data['training']:
-                        train_list.append(image['image'][-15:])
-                if DATASET_CONFIG == 1:
-                    for image in data[f'fold {TEST_FOLD}']['training']:
-                        train_list.append(image['image'][-15:])                
-                for image in os.listdir(path_images_base):
-                    if image not in train_list and image.endswith('.nii.gz'):
-                        list_imagesTest.append(image)
-                        list_labelsTest.append(image)
 
         list_imagesTest = sorted(list_imagesTest)
         list_labelsTest = sorted(list_labelsTest)
@@ -170,49 +172,70 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None, MODEL=None, LOW
 
         start = time()
 
-        if LOW_RAM is not None and not testing_done:
-            if path_imagesTest[:8] == '/content': # We are working on drive, we need to get rid of spaces in the path
-                path_outputTest = path_outputTest[:17] + '\ ' + path_outputTest[18:]
-            for image in list_imagesTest:
-                image = image[-15:-7] + '_0000.nii.gz'
-                # Remove preexisting files from auxiliar dir
-                for files in glob(os.path.join(path_lowram, '*')):
-                    os.remove(files)
-                print('Performing inference over', image)
-                
-                # Copy a single image to auxiliar dir
-                shutil.copyfile(os.path.join(path_imagesTest, image), os.path.join(path_lowram, image))
+        if MODE == 'TEST' or MODE == 'TRAIN_TEST':
+            if LOW_RAM and not testing_done:
+                if path_imagesTest[:8] == '/content': # We are working on drive, we need to get rid of spaces in the path
+                    path_outputTest = path_outputTest[:17] + '\ ' + path_outputTest[18:]
+                for image in list_imagesTest:
+                    image = image[-15:-7] + '_0000.nii.gz'
+                    # Remove preexisting files from auxiliar dir
+                    for files in glob(os.path.join(path_lowram, '*')):
+                        os.remove(files)
+                    print('Performing inference over', image)
+                    
+                    # Copy a single image to auxiliar dir
+                    shutil.copyfile(os.path.join(path_imagesTest, image), os.path.join(path_lowram, image))
 
-                if path_imagesTest[:8] == '/content':
-                    path_lowram = path_lowram[:17] + '\ ' + path_lowram[18:]
+                    if path_imagesTest[:8] == '/content':
+                        path_lowram = path_lowram[:17] + '\ ' + path_lowram[18:]
 
+                    if LOWRES:
+                        os.system('nnUNet_predict -i ' + path_lowram + ' -o ' + path_outputTest + f' -t Task100_grid -m 3d_lowres -f ' + TEST_FOLD)
+                    else:
+                        os.system('nnUNet_predict -i ' + path_lowram + ' -o ' + path_outputTest + f' -t Task100_grid -m 3d_fullres -f ' + TEST_FOLD)
+
+                    if path_imagesTest[:8] == '/content':
+                        path_lowram = os.path.join(path_imagesTest, 'low_ram_' + trainer + '_' + MODEL_DIR[-6:])
+
+                        print(f'Inference over {image} finished')
+                        print('                                ')
+            elif not LOW_RAM and not testing_done:
+                if path_imagesTest[:8] == '/content': # We are working on drive, we need to get rid of spaces in the path
+                    path_imagesTest = path_imagesTest[:17] + '\ ' + path_imagesTest[18:]
+                    path_outputTest = path_outputTest[:17] + '\ ' + path_outputTest[18:]
+
+                print('Performing inference with the testing set:')
+                print('                                          ')
                 if LOWRES:
-                    os.system('nnUNet_predict -i ' + path_lowram + ' -o ' + path_outputTest + f' -t Task100_grid -m 3d_lowres -f ' + TEST_FOLD)
+                    os.system('nnUNet_predict -i ' + path_imagesTest + ' -o ' + path_outputTest + f' -t Task100_grid -m 3d_lowres -f ' + TEST_FOLD)
                 else:
-                    os.system('nnUNet_predict -i ' + path_lowram + ' -o ' + path_outputTest + f' -t Task100_grid -m 3d_fullres -f ' + TEST_FOLD)
+                    os.system('nnUNet_predict -i ' + path_imagesTest + ' -o ' + path_outputTest + f' -t Task100_grid -m 3d_fullres -f ' + TEST_FOLD)
 
-                if path_imagesTest[:8] == '/content':
-                    path_lowram = os.path.join(path_imagesTest, 'low_ram_' + trainer + '_' + MODEL_DIR[-6:])
+                print('                  ')
+                print('Inference finished')
 
-                    print(f'Inference over {image} finished')
-                    print('                                ')
-        elif not testing_done and not LOW_RAM:
-            if path_imagesTest[:8] == '/content': # We are working on drive, we need to get rid of spaces in the path
-                path_imagesTest = path_imagesTest[:17] + '\ ' + path_imagesTest[18:]
-                path_outputTest = path_outputTest[:17] + '\ ' + path_outputTest[18:]
+        elif MODE == 'ENSEMBLE_TEST' or MODE  == 'ENSEMBLE_TRAIN_TEST':
+            if not testing_done:
+                if path_imagesTest[:8] == '/content': # We are working on drive, we need to get rid of spaces in the path
+                    path_outputTest = path_outputTest[:17] + '\ ' + path_outputTest[18:]
 
-            print('Performing inference with the testing set:')
-            print('                                          ')
-            if LOWRES:
-                os.system('nnUNet_predict -i ' + path_imagesTest + ' -o ' + path_outputTest + f' -t Task100_grid -m 3d_lowres -f ' + TEST_FOLD)
-            else:
-                os.system('nnUNet_predict -i ' + path_imagesTest + ' -o ' + path_outputTest + f' -t Task100_grid -m 3d_fullres -f ' + TEST_FOLD)
+            for image in list_imagesTest:
+                # Define paths for ensemble
+                INPUT_DIR = os.path.join(path_imagesTest, image[-15:-7])
+                INPUT = image[-15:]
+                maybe_mkdir_p(INPUT_DIR)
 
-            print('                  ')
-            print('Inference finished')
+                # Insert input file in input dir
+                shutil.copyfile(os.path.join(path_imagesTest, f'{image[-15:-7]}_0000.nii.gz'), os.path.join(INPUT_DIR, INPUT))
+                
+                # Perform ensembled inference (only with LOW_RAM=True)
+                ensemble_single(nnunet_dir=nnunet_dir, INPUT_DIR=INPUT_DIR, INPUT=INPUT, MODEL_DIR=MODEL_DIR, MODEL=MODEL, LOWRES=LOWRES)
 
-        print(f'Inference took {time() - start} s ({len(list_imagesTest)} images)')
-        print('                                                                  ')
+                # Moves output nifti to output dir in the proper format
+                os.rename(os.path.join(INPUT_DIR, 'output', INPUT), os.path.join(path_outputTest, INPUT))
+
+            print(f'Inference with ensembling took {time() - start} s ({len(list_imagesTest)} images)')
+            print('                                                                                  ')
 
         # Move all inferred images and labels to test dir
         print('Moving all labels and predictions to:')
@@ -227,8 +250,7 @@ def testing(nnunet_dir, MODEL_DIR=None, MODE=None, LOW_RAM=None, MODEL=None, LOW
         print('done')
         print('    ')
 
-    if MODE == 'TEST' or MODE == 'EVALUATION' or MODE == 'TRAIN_TEST' or MODE == 'TRAIN_EVAL' or MODE == 'TEST_ALL' or MODE == 'EVAL_ALL':
-
+    if MODE in ['TEST', 'EVAL', 'TRAIN_TEST', 'TRAIN_EVAL', 'ENSEMBLE_TEST', 'ENSMEBLE_EVAL', 'ENSEMBLE_TRAIN_TEST', 'ENSEMBLE_TRAIN_EVAL']:
         ################################ Evaluation ##########################################
 
         # Perform evaluation over inferred samples
